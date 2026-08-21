@@ -126,6 +126,11 @@ The first command should print a forwarded address, `tode .` should cover the
 current window, and the terminal process should match the configured remote
 login shell.
 
+The deployer copies `editor/keybindings.tode.json` verbatim, so local and
+remote tode use the same tab contract: `⌃T` opens an editor tab and `⌃W`
+closes it. The surrounding local kitty handles `⌘T`/`⌘W` for kitty tabs in
+both cases.
+
 ## Things to check on an unfamiliar remote
 
 Electron-based tools (tode's browser component) are picky about old server
