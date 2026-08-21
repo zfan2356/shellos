@@ -39,6 +39,11 @@ edit in any editor's settings UI lands directly in the repo working tree —
 review with `git diff`, then commit). kitty config, tode shortcut decisions,
 and theme files flow machine → repo via `sync.sh`.
 
+The tab mnemonic is the same everywhere: `T` creates and `W` closes. Kitty
+owns the Command variants (`⌘T`/`⌘W`) for terminal tabs; tode owns the Control
+variants (`⌃T`/`⌃W`) for editor tabs. The editor bindings are disabled while
+the integrated terminal has focus, so normal shell controls still work.
+
 ## Bootstrap
 
 Bootstrap is AI-driven: point a coding agent (Claude Code etc.) at

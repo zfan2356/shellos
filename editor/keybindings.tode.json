@@ -10,7 +10,13 @@
     "command": "chatgpt.addToThread"
   },
   {
-    "key": "cmd+t",
-    "command": "workbench.action.terminal.newInActiveWorkspace"
+    "key": "ctrl+t",
+    "command": "workbench.action.files.newUntitledFile",
+    "when": "!terminalFocus"
+  },
+  {
+    "key": "ctrl+w",
+    "command": "workbench.action.closeActiveEditor",
+    "when": "!terminalFocus"
   }
 ]
