@@ -13,12 +13,17 @@ TB="$HOME/.local/lib/tode/vendor/terminal-browser/bin/terminal-browser"
 
 ssh "$HOST" bash -s -- "$PORT" <<'RS'
 PORT="$1"
-CS=$(ls -d "$HOME"/.local/share/tode/code-server/*/bin/code-server 2>/dev/null | head -1)
+CS=$(ls -d "$HOME"/.local/share/tode/code-server/*/bin/code-server 2>/dev/null | sort -V | tail -1)
 [ -z "$CS" ] && { echo "no code-server found on remote (install tode there first)"; exit 1; }
+REMOTE_SHELL=$(command -v zsh 2>/dev/null || true)
+if [ -z "$REMOTE_SHELL" ] && command -v getent >/dev/null 2>&1; then
+  REMOTE_SHELL=$(getent passwd "$(id -u)" | cut -d: -f7)
+fi
+[ -x "$REMOTE_SHELL" ] || REMOTE_SHELL=/bin/sh
 if ! curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
   mkdir -p "$HOME/wxg/.logs"
   tmux new-session -d -s "code-server-$PORT" \
-    "'$CS' --auth none --bind-addr 127.0.0.1:$PORT \
+    "exec env SHELL='$REMOTE_SHELL' '$CS' --auth none --bind-addr 127.0.0.1:$PORT \
        --user-data-dir $HOME/.local/share/tode/vscode/user-data \
        --extensions-dir $HOME/.local/share/tode/vscode/extensions \
        >> $HOME/wxg/.logs/code-server-$PORT.log 2>&1"

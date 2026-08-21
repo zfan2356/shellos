@@ -24,6 +24,31 @@ the forwarded socket (the local kitty.conf already sets
 `allow_remote_control socket-only` + `listen_on unix:/tmp/kitty-{kitty_pid}`),
 which is what makes remote-side tooling able to open local panes/tabs.
 
+The argument passed to `kitten ssh` must match the `hostname` pattern above.
+Do not expand an SSH alias to a raw hostname in a shell wrapper before calling
+the kitten, or the per-host settings will not match. A convenience function
+that also works outside kitty can select the client dynamically:
+
+```zsh
+remote-dev() {
+  local host='<ssh-alias>'
+  local -a ssh_cmd
+  if [[ -n "${KITTY_WINDOW_ID:-}" ]] && command -v kitten >/dev/null; then
+    ssh_cmd=(kitten ssh)
+  else
+    ssh_cmd=(ssh)
+  fi
+  "${ssh_cmd[@]}" "$host" "$@"
+}
+```
+
+Verify a kitten-managed connection on the remote before debugging tode:
+
+```bash
+test -n "$KITTY_LISTEN_ON"
+command -v kitten
+```
+
 ## tode on the remote
 
 - Install from GitHub releases (same as local; the official CDN may be
@@ -55,14 +80,51 @@ UI with GPU. No pixels cross the network — typing latency becomes one
 round-trip instead of a frame upload. Use this for real editing sessions;
 plain remote tode (pixel streaming, see caps above) is only for quick looks.
 
-The remote UX can match VS Code Remote exactly: replace the remote `tode`
-command with a small wrapper that (1) ensures the local code-server is up,
-then (2) uses kitty's forwarded remote control (`kitten @ launch` works on
-the remote when ssh.conf sets `forward_remote_control yes`) to open a new
-local kitty tab running `tode-remote` against that folder. Typing `tode .`
-on the remote then opens a locally-rendered editor, and the remote no longer
-needs the Electron half of tode at all — only code-server. Keep the original
-launcher as a `tode-pixel` fallback and pass `-*` flags through to it.
+Deploy the remote entrypoint and matching editor configuration from the Mac:
+
+```bash
+./scripts/deploy-remote-tode.sh <ssh-alias> [port]
+```
+
+The deployer:
+
+- preserves the original remote launcher as `~/.local/bin/tode-pixel`;
+- installs `scripts/tode-remote-wrapper` as the remote `tode` command;
+- backs up the old wrapper and User config under
+  `~/.local/share/tode-backups/`;
+- renders `editor/settings.json` for Linux, changing only the Codex binary and
+  integrated-terminal profile;
+- copies `editor/keybindings.tode.json` exactly;
+- records the Mac-side SSH alias and selected port in the remote-only
+  `~/.config/shellos/remote-tode.env`;
+- restarts only the matching detached code-server tmux session.
+
+Typing `tode .` remotely then uses kitty's forwarded control channel to open
+the locally rendered editor as an `overlay-main` over the current SSH window.
+It does not add a tab. Closing the overlay reveals the same SSH shell. The
+wrapper returns after the overlay has been created; the SSH shell remains
+available underneath it.
+
+The remote code-server is started with the remote login shell in `SHELL`, and
+the generated Linux settings select that same executable as the integrated
+terminal profile. This avoids tmux's often-stale `/bin/bash` environment.
+Running `tode -*` still delegates to `tode-pixel`, as does a connection without
+forwarded kitty control.
+
+Verify the complete path:
+
+```bash
+# On the remote, inside a connection made by `kitten ssh`:
+echo "$KITTY_LISTEN_ON"
+tode .
+
+# In a tode integrated terminal:
+ps -p $$ -o comm=
+```
+
+The first command should print a forwarded address, `tode .` should cover the
+current window, and the terminal process should match the configured remote
+login shell.
 
 ## Things to check on an unfamiliar remote
 

@@ -24,6 +24,10 @@ inside the repo.
 - **Extension lists** (`editor/extensions.<target>.txt`) are maintained by
   hand: update them in the same commit as an install/uninstall. Internal
   extensions belong in the untracked `editor/extensions.<target>.local.txt`.
+- **Remote editor config is generated, not independently edited**:
+  `scripts/deploy-remote-tode.sh <ssh-alias>` copies the canonical tode
+  keybindings and renders shared settings with only Linux shell/Codex
+  overrides. The remote wrapper source is `scripts/tode-remote-wrapper`.
 
 ## Commit workflow
 
@@ -72,6 +76,9 @@ config change — the bootstrap skill is only useful if it stays current.
   symlink scheme; commands differ per editor, e.g. cmd+i)
 - `kitty/` ← `~/.config/kitty/` (minus ssh.conf, local-only)
 - `tode/` ← `~/.local/share/tode/` (shortcuts.json, theme files)
+- `scripts/tode-remote-wrapper` → remote `~/.local/share/shellos/`, with the
+  remote-only alias/port/shell stored outside the repo in
+  `~/.config/shellos/remote-tode.env`
 - Hard red lines: no internal host names or machine identifiers anywhere;
   the remote dev box is only ever "a remote dev server"; its patches live in
   local Claude memory, never in the repo.
