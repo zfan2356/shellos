@@ -45,6 +45,16 @@ which is what makes remote-side tooling able to open local panes/tabs.
 - Python navigation: same rule as local — basedpyright from Open VSX,
   never Pylance (code-server).
 
+## VS Code Remote-style mode (recommended over a WAN)
+
+`scripts/tode-remote <ssh-host> [remote-path] [port]` flips the architecture
+to match VS Code Remote: code-server runs on the remote (started in a
+detached tmux; does not survive an instance restart), an SSH tunnel carries
+only its WebSocket/RPC traffic, and the LOCAL terminal-browser renders the
+UI with GPU. No pixels cross the network — typing latency becomes one
+round-trip instead of a frame upload. Use this for real editing sessions;
+plain remote tode (pixel streaming, see caps above) is only for quick looks.
+
 ## Things to check on an unfamiliar remote
 
 Electron-based tools (tode's browser component) are picky about old server

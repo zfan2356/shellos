@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# VS Code Remote-style tode: code-server runs on the remote machine (only
+# RPC/WebSocket crosses the SSH tunnel), pixels render locally with GPU.
+# Orders of magnitude lighter over a WAN than remote tode's pixel streaming.
+#   tode-remote <ssh-host> [remote-path] [port]
+# The remote code-server runs in a detached tmux session and does NOT
+# survive a remote instance restart — rerun this script to bring it back.
+set -euo pipefail
+HOST="${1:?usage: tode-remote <ssh-host> [remote-path] [port]}"
+RPATH="${2:-~}"
+PORT="${3:-8791}"
+TB="$HOME/.local/lib/tode/vendor/terminal-browser/bin/terminal-browser"
+
+ssh "$HOST" bash -s -- "$PORT" <<'RS'
+PORT="$1"
+CS=$(ls -d "$HOME"/.local/share/tode/code-server/*/bin/code-server 2>/dev/null | head -1)
+[ -z "$CS" ] && { echo "no code-server found on remote (install tode there first)"; exit 1; }
+if ! curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
+  mkdir -p "$HOME/wxg/.logs"
+  tmux new-session -d -s "code-server-$PORT" \
+    "'$CS' --auth none --bind-addr 127.0.0.1:$PORT \
+       --user-data-dir $HOME/.local/share/tode/vscode/user-data \
+       --extensions-dir $HOME/.local/share/tode/vscode/extensions \
+       >> $HOME/wxg/.logs/code-server-$PORT.log 2>&1"
+  for _ in $(seq 1 20); do
+    curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break
+    sleep 0.5
+  done
+fi
+curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 \
+  && echo "remote code-server ready on :$PORT" \
+  || { echo "code-server failed to start; see ~/wxg/.logs/code-server-$PORT.log"; exit 1; }
+RS
+
+if ! nc -z 127.0.0.1 "$PORT" 2>/dev/null; then
+  ssh -f -N -o ExitOnForwardFailure=yes -L "$PORT:127.0.0.1:$PORT" "$HOST"
+  echo "tunnel up: localhost:$PORT -> $HOST:$PORT"
+fi
+
+exec "$TB" "http://127.0.0.1:$PORT/?folder=$RPATH"

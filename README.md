@@ -27,6 +27,7 @@ truth for my macOS terminal environment:
 | `scripts/link.sh` | — | symlink the shared editor config into both editors (idempotent, backs up real files) |
 | `scripts/sync.sh` | — | snapshot machine-authoritative files (kitty, shortcuts, theme) into the repo |
 | `scripts/redline.sh` | — | pre-commit content check (pattern list is untracked) |
+| `scripts/tode-remote` | `~/.local/bin/tode-remote` (symlink) | VS Code Remote-style editing: remote code-server + SSH tunnel + local rendering |
 | `scripts/unstick-kitty.sh` | — | rescue a kitty wedged in the GPU driver: capture stack evidence, force-kill, print recovery steps |
 | `third-party/kitty` | — | upstream kitty source, pinned to the version in use (submodule) |
 | `third-party/terminal-code` | — | upstream tode source, pinned to the version in use (submodule) |
