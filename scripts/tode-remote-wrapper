@@ -1,0 +1,87 @@
+#!/bin/sh
+# Remote-side `tode`: run code-server remotely and render it in an overlay of
+# the current local kitty window. Install with deploy-remote-tode.sh.
+set -eu
+
+CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
+CONFIG="$CONFIG_HOME/shellos/remote-tode.env"
+[ -r "$CONFIG" ] && . "$CONFIG"
+
+PORT=${TODE_REMOTE_PORT:-8791}
+PIXEL_BIN=${TODE_PIXEL_BIN:-"$HOME/.local/bin/tode-pixel"}
+
+pixel() {
+  if [ ! -x "$PIXEL_BIN" ]; then
+    echo "pixel-mode launcher not found: $PIXEL_BIN" >&2
+    exit 1
+  fi
+  exec "$PIXEL_BIN" "$@"
+}
+
+# Flags are commands for tode itself, not project paths. Keep them on the
+# remote installation instead of trying to route them through the Mac.
+case "${1:-}" in
+  -*) pixel "$@" ;;
+esac
+
+project=${1:-.}
+project=$(cd "$project" 2>/dev/null && pwd) || {
+  echo "no such directory: ${1:-.}" >&2
+  exit 1
+}
+
+remote_shell=${TODE_REMOTE_SHELL:-}
+if [ -z "$remote_shell" ]; then
+  remote_shell=$(command -v zsh 2>/dev/null || true)
+fi
+if [ -z "$remote_shell" ] && command -v getent >/dev/null 2>&1; then
+  remote_shell=$(getent passwd "$(id -u)" | cut -d: -f7)
+fi
+[ -x "$remote_shell" ] || remote_shell=/bin/sh
+
+if ! curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
+  code_server=$(ls -d "$HOME"/.local/share/tode/code-server/*/bin/code-server 2>/dev/null \
+    | sort -V | tail -1)
+  [ -n "$code_server" ] || {
+    echo "code-server not found; install tode on the remote first" >&2
+    exit 1
+  }
+  mkdir -p "$HOME/wxg/.logs"
+  tmux kill-session -t "code-server-$PORT" 2>/dev/null || true
+  tmux new-session -d -s "code-server-$PORT" \
+    "exec env SHELL='$remote_shell' '$code_server' \
+      --auth none --bind-addr 127.0.0.1:$PORT \
+      --user-data-dir '$HOME/.local/share/tode/vscode/user-data' \
+      --extensions-dir '$HOME/.local/share/tode/vscode/extensions' \
+      >> '$HOME/wxg/.logs/code-server-$PORT.log' 2>&1"
+  attempt=0
+  while [ "$attempt" -lt 20 ]; do
+    curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break
+    sleep 0.5
+    attempt=$((attempt + 1))
+  done
+fi
+
+curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 || {
+  echo "code-server failed; see ~/wxg/.logs/code-server-$PORT.log" >&2
+  exit 1
+}
+
+if [ -n "${KITTY_LISTEN_ON:-}" ] && command -v kitten >/dev/null 2>&1; then
+  if [ -z "${TODE_REMOTE_SSH_HOST:-}" ]; then
+    echo "TODE_REMOTE_SSH_HOST is missing from $CONFIG" >&2
+    exit 1
+  fi
+  kitten @ launch --type=overlay-main --self --title "tode $(basename "$project")" \
+    /bin/sh -lc 'exec "$HOME/.local/bin/tode-remote" "$@"' sh \
+    "$TODE_REMOTE_SSH_HOST" "$project" "$PORT" >/dev/null \
+    && {
+      echo "opened locally in the current kitty window: $project"
+      exit 0
+    }
+  echo "kitty remote control failed; falling back to pixel mode" >&2
+else
+  echo "no forwarded kitty remote control (use kitten ssh); falling back to pixel mode" >&2
+fi
+
+pixel "$project"

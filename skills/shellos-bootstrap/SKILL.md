@@ -74,13 +74,16 @@ Notes on what these files are:
 
 ## 3. Extensions
 
-`$REPO/tode/extensions.txt` is the inventory. Two supported sources:
+`$REPO/editor/extensions.tode.txt` is the exact inventory. Two supported
+sources can provide extension bytes, but neither source changes the inventory:
 
-**Preferred when a VS Code / Cursor with these extensions exists locally:**
-`tode --import` copies settings, keybindings, snippets and extensions in one
-shot — but it REPLACES the User settings/keybindings symlinks with real
-files, so re-run `$REPO/scripts/link.sh` afterwards, and uninstall Pylance
-(below).
+**When a VS Code / Cursor with these extensions exists locally:**
+`tode --import` can copy extension files quickly, but it is not a configuration
+restore. It also imports unlisted extensions and REPLACES the User
+settings/keybindings symlinks with real files. After using it, re-run
+`$REPO/scripts/link.sh`, uninstall every extension not listed in
+`editor/extensions.tode.txt` (except tode's own `tode.tode-bridge` and
+`tode.tode-theme`), and install every missing listed extension.
 
 **From Open VSX (fresh machine):** for each ID in extensions.txt, try
 `https://open-vsx.org/api/<publisher>/<name>` — if present, download the vsix
@@ -94,7 +97,8 @@ $CS --extensions-dir ~/.local/share/tode/vscode/extensions \
 ```
 
 Marketplace-only extensions (copilot etc.) cannot be fetched this
-way; skip them and report which were skipped.
+way. Fetch their official VSIX from the vendor marketplace when available;
+otherwise report the missing inventory item.
 
 **Python — non-negotiable pair:**
 - `detachhead.basedpyright` MUST be installed (from Open VSX). It is what
@@ -129,3 +133,14 @@ too; kitty connects via `kitten ssh`). The generic pairing setup is in
 deliberately NOT in this repo — they live in the owner's local notes; ask
 before touching the remote side. Config restored by this skill lives in the
 data dir and survives tode upgrades; any remote binary patches do not.
+
+After local setup, deploy the generic remote wrapper and a generated Linux
+version of the shared editor configuration:
+
+```bash
+$REPO/scripts/deploy-remote-tode.sh <ssh-alias> [port]
+```
+
+The local connection must use `kitten ssh <ssh-alias>`, and the alias must
+match the `hostname` pattern in local-only `kitty/ssh.conf`. Verify remotely
+that `KITTY_LISTEN_ON` is non-empty before testing `tode .`.

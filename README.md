@@ -28,6 +28,8 @@ truth for my macOS terminal environment:
 | `scripts/sync.sh` | — | snapshot machine-authoritative files (kitty, shortcuts, theme) into the repo |
 | `scripts/redline.sh` | — | pre-commit content check (pattern list is untracked) |
 | `scripts/tode-remote` | `~/.local/bin/tode-remote` (symlink) | VS Code Remote-style editing: remote code-server + SSH tunnel + local rendering |
+| `scripts/tode-remote-wrapper` | remote `~/.local/share/shellos/` | remote `tode` entrypoint: current-window overlay with pixel-mode fallback |
+| `scripts/deploy-remote-tode.sh` | remote host | backs up and deploys the wrapper plus a Linux rendering of the shared editor config |
 | `scripts/unstick-kitty.sh` | — | rescue a kitty wedged in the GPU driver: capture stack evidence, force-kill, print recovery steps |
 | `third-party/kitty` | — | upstream kitty source, pinned to the version in use (submodule) |
 | `third-party/terminal-code` | — | upstream tode source, pinned to the version in use (submodule) |
@@ -50,6 +52,10 @@ git clone https://github.com/zfan2356/shellos.git
 # then, in Claude Code:
 #   "bootstrap my terminal env from ~/shellos, follow skills/shellos-bootstrap/SKILL.md"
 ```
+
+For a paired remote host, run `scripts/deploy-remote-tode.sh <ssh-alias>`
+after the local bootstrap. See `docs/remote-server.md` for the required
+`kitten ssh` entrypoint and the generated remote-only overrides.
 
 ## Keeping the repo fresh
 
