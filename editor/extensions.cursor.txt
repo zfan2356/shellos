@@ -1,0 +1,13 @@
+antfu.theme-vitesse
+anysphere.cursorpyright
+anysphere.remote-containers
+anysphere.remote-ssh
+ardonplay.vscode-jetbrains-icon-theme
+chadalen.vscode-jetbrains-icon-theme
+golang.go
+k--kato.intellij-idea-keybindings
+llvm-vs-code-extensions.vscode-clangd
+ms-python.debugpy
+ms-python.python
+ms-vscode.cmake-tools
+vscodevim.vim

@@ -8,7 +8,7 @@ if [ -f "$REPO/.redline-local" ]; then
   while IFS= read -r pat; do
     [ -z "$pat" ] && continue
     if grep -rn -i "$pat" "$REPO" --exclude-dir=third-party --exclude-dir=.git \
-         --exclude=.redline-local; then
+         --exclude=.redline-local --exclude="*.local.json" --exclude="*.local.txt"; then
       echo "REDLINE HIT: '$pat'"; fail=1
     fi
   done < "$REPO/.redline-local"

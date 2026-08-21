@@ -17,21 +17,16 @@
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "python-envs.defaultEnvManager": "ms-python.python:venv",
   "python-envs.defaultPackageManager": "ms-python.python:pip",
-  "python.languageServer": "None",
-  "basedpyright.analysis.typeCheckingMode": "off",
   "explorer.confirmDelete": false,
   "terminal.integrated.inheritEnv": false,
   "mesonbuild.downloadLanguageServer": true,
-  "yaml.schemas": {"file:///Users/zhangfan/.vscode/extensions/continue.continue-1.2.11-darwin-arm64/config-yaml-schema.json":[".continue/**/*.yaml"]},
   "editor.inlineSuggest.edits.allowCodeShifting": "never",
   "editor.fontLigatures": "'liga' off, 'calt' on",
   "security.promptForRemoteFileProtocolHandling": false,
   "files.autoSaveDelay": 1000,
   "files.autoSave": "afterDelay",
-  "workbench.iconTheme": "vscode-jetbrains-icon-theme-2023-dark",
   "workbench.enableExperiments": false,
   "telemetry.telemetryLevel": "off",
-  "update.mode": "none",
   "terminal.integrated.smoothScrolling": false,
   "workbench.list.smoothScrolling": false,
   "editor.smoothScrolling": false,
@@ -48,7 +43,6 @@
   "chat.editor.fontFamily": "\"JetBrains Mono\", Menlo, \"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
   "terminal.integrated.fontFamily": "\"JetBrains Mono\", Menlo, \"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
   "editor.fontFamily": "\"JetBrains Mono\", Menlo, \"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
-  "workbench.colorTheme": "Terminal Code",
   "scm.defaultViewMode": "tree",
   "editor.minimap.enabled": false,
   "editor.cursorBlinking": "solid",
@@ -375,5 +369,20 @@
         }
       }
     ]
-  }
+  },
+  "python.languageServer": "None",
+  "basedpyright.analysis.typeCheckingMode": "off",
+  "workbench.colorTheme": "Vitesse Dark",
+  "workbench.iconTheme": "vscode-jetbrains-icon-theme-2023-dark",
+  "clangd.arguments": [
+    "--header-insertion=never"
+  ],
+  "git.openRepositoryInParentFolders": "always",
+  "remote.autoForwardPortsSource": "hybrid",
+  "window.autoDetectColorScheme": false,
+  "vim.disableExtension": true,
+  "cursor.composer.conversationDensity": "detailed",
+  "editor.minimap.sectionHeaderFontSize": 7,
+  "debug.console.fontSize": 10,
+  "terminal.integrated.fontSize": 10
 }

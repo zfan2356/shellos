@@ -18,6 +18,5 @@ ms-vscode.remote-explorer
 narasimapandiyan.jetbrainsmono
 openai.chatgpt
 rohitgorana.yaml-diff
-sst-dev.opencode
 vscodevim.vim
 zfan2356.worktree-review

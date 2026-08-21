@@ -11,35 +11,36 @@ terminal environment; this skill pushes local reality INTO it. The reverse
 direction (repo → fresh machine) is `skills/shellos-bootstrap/SKILL.md`
 inside the repo.
 
-## Sync workflow
+## How config flows
 
-1. Snapshot live config into the repo:
-   ```bash
-   cd ~/wxg/shellos && ./scripts/sync.sh
-   ```
-   This copies kitty conf, tode settings/keybindings/shortcuts/theme, and
-   regenerates `tode/extensions.txt` from the installed-extension registry.
+- **Editor config is symlinked, not copied**: `editor/settings.json` is the
+  live settings file of BOTH tode and Cursor (their User-dir settings.json
+  are symlinks into this repo; per-target keybindings likewise). Any change
+  made in either editor lands in the repo working tree immediately.
+  `scripts/link.sh` (re)creates the symlinks if an editor replaced one with
+  a real file.
+- **kitty / tode shortcuts / tode theme** are machine-authoritative: run
+  `scripts/sync.sh` to snapshot them into the repo.
+- **Extension lists** (`editor/extensions.<target>.txt`) are maintained by
+  hand: update them in the same commit as an install/uninstall. Internal
+  extensions belong in the untracked `editor/extensions.<target>.local.txt`.
 
-2. Review `git diff` and drop anything that shouldn't land (see red lines).
-   If a live-config change was experimental or accidental, revert the repo
-   file rather than committing noise.
+## Commit workflow
 
-3. **Red-line check before every commit** (the repo is PUBLIC):
+1. `git diff` — editor edits are already in the working tree; run
+   `scripts/sync.sh` first if kitty/shortcuts/theme changed.
+2. **Red-line check, every time** (the repo is PUBLIC and editors AUTO-WRITE
+   keys into the symlinked settings — e.g. Remote-SSH writes host-platform
+   maps with internal hostnames):
    ```bash
    ./scripts/redline.sh
    ```
-   Must print `redline: clean`. The forbidden-pattern list lives in
+   Must print `redline: clean`. On a hit in `editor/settings.json`, DELETE
+   the offending key before committing (Remote-SSH re-asks the platform on
+   next connect; that is acceptable). The forbidden-pattern list lives in
    `.redline-local` (untracked on purpose — the list itself is sensitive;
-   recreate it from local Claude memory if missing). Hard rules:
-   - No internal host names or machine identifiers anywhere. The remote dev
-     box is only ever "a remote dev server"; its specific patches stay OUT
-     of the repo (they live in local Claude memory).
-   - `~/.config/kitty/ssh.conf` is local-only — never add it (sync.sh
-     already skips it; it's in .gitignore).
-
-4. Commit with a message saying WHAT changed and WHY (e.g. "Add
-   files.watcherExclude — .venv watcher noise amplified wake-up jank"),
-   then `git push`.
+   recreate from local Claude memory if missing).
+3. Commit with a message saying WHAT changed and WHY, then `git push`.
 
 ## When kitty or tode is upgraded
 
@@ -64,10 +65,15 @@ config change — the bootstrap skill is only useful if it stays current.
 
 ## Layout reminders
 
-- `kitty/` ← `~/.config/kitty/` (minus ssh.conf)
-- `tode/` ← `~/.local/share/tode/vscode/user-data/User/` (settings,
-  keybindings) + `~/.local/share/tode/` (shortcuts.json, theme files)
-- `tode/extensions.txt` ← extension registry (informational inventory;
-  `tode.*` internals excluded)
+- `editor/settings.json` = live shared settings of tode AND Cursor (symlink
+  targets: `~/.local/share/tode/vscode/user-data/User/settings.json`,
+  `~/Library/Application Support/Cursor/User/settings.json`)
+- `editor/keybindings.{tode,cursor}.json` = per-editor keybindings (same
+  symlink scheme; commands differ per editor, e.g. cmd+i)
+- `kitty/` ← `~/.config/kitty/` (minus ssh.conf, local-only)
+- `tode/` ← `~/.local/share/tode/` (shortcuts.json, theme files)
+- Hard red lines: no internal host names or machine identifiers anywhere;
+  the remote dev box is only ever "a remote dev server"; its patches live in
+  local Claude memory, never in the repo.
 - This skill is symlinked from `~/.claude/skills/shellos` → the repo copy,
   so editing it here versions it automatically.

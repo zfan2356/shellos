@@ -45,13 +45,13 @@ Install from GitHub releases of `zenbu-labs/terminal-code` (NOT the official
 installer — it pulls from workers.dev, see step 0). Pick the latest release
 asset for macOS arm64, install so that `tode` is on PATH (`~/.local/bin/tode`).
 
-Then restore config (tode must have run at least once so the data dir exists,
-or create it):
+Then restore config. Editor settings/keybindings are SYMLINKED into the
+repo checkout (shared between tode and Cursor — the repo must stay at a
+stable path):
 
 ```bash
 mkdir -p ~/.local/share/tode/vscode/user-data/User
-cp $REPO/tode/settings.json $REPO/tode/keybindings.json \
-   ~/.local/share/tode/vscode/user-data/User/
+$REPO/scripts/link.sh
 cp $REPO/tode/shortcuts.json ~/.local/share/tode/
 cp $REPO/tode/theme/palette.json $REPO/tode/theme/live-theme.json \
    $REPO/tode/theme/inject.css ~/.local/share/tode/
@@ -78,9 +78,9 @@ Notes on what these files are:
 
 **Preferred when a VS Code / Cursor with these extensions exists locally:**
 `tode --import` copies settings, keybindings, snippets and extensions in one
-shot — but it OVERWRITES the User settings/keybindings, so re-copy
-`$REPO/tode/settings.json` and `keybindings.json` afterwards (step 2), and
-uninstall Pylance (below).
+shot — but it REPLACES the User settings/keybindings symlinks with real
+files, so re-run `$REPO/scripts/link.sh` afterwards, and uninstall Pylance
+(below).
 
 **From Open VSX (fresh machine):** for each ID in extensions.txt, try
 `https://open-vsx.org/api/<publisher>/<name>` — if present, download the vsix
@@ -93,7 +93,7 @@ $CS --extensions-dir ~/.local/share/tode/vscode/extensions \
     --install-extension <file>.vsix
 ```
 
-Marketplace-only extensions (copilot, gongfeng, …) cannot be fetched this
+Marketplace-only extensions (copilot etc.) cannot be fetched this
 way; skip them and report which were skipped.
 
 **Python — non-negotiable pair:**

@@ -18,16 +18,22 @@ truth for my macOS terminal environment:
 | Path | Deploys to | What it is |
 |---|---|---|
 | `kitty/` | `~/.config/kitty/` | kitty.conf, theme, tode-generated keybinds (`ssh.conf` stays local-only) |
-| `tode/settings.json` | `~/.local/share/tode/vscode/user-data/User/` | editor settings (Python interpreter auto-select, theme overrides, …) |
-| `tode/keybindings.json` | `~/.local/share/tode/vscode/user-data/User/` | editor keybindings |
+| `editor/` | symlinked into tode + Cursor User dirs | **the** editor config: one shared `settings.json` for both editors, per-target keybindings, per-target extension lists |
 | `tode/shortcuts.json` | `~/.local/share/tode/` | shortcut-conflict decision record (source of the generated kitty keybinds) |
 | `tode/theme/` | `~/.local/share/tode/` | tode theme files (palette, live-theme, inject.css) |
-| `tode/extensions.txt` | — | extension inventory (IDs, one per line) |
+| `skills/shellos/` | `~/.claude/skills/shellos` (symlink) | agent skill: sync/apply workflow for this repo |
 | `skills/shellos-bootstrap/` | — | agent skill: restore this environment on a fresh machine |
 | `docs/remote-server.md` | — | how the local setup pairs with a remote dev server |
-| `scripts/sync.sh` | — | snapshot the live config back into this repo |
+| `scripts/link.sh` | — | symlink the shared editor config into both editors (idempotent, backs up real files) |
+| `scripts/sync.sh` | — | snapshot machine-authoritative files (kitty, shortcuts, theme) into the repo |
+| `scripts/redline.sh` | — | pre-commit content check (pattern list is untracked) |
 | `third-party/kitty` | — | upstream kitty source, pinned to the version in use (submodule) |
 | `third-party/terminal-code` | — | upstream tode source, pinned to the version in use (submodule) |
+
+`editor/settings.json` IS the live config of both editors (symlinked, so an
+edit in any editor's settings UI lands directly in the repo working tree —
+review with `git diff`, then commit). kitty config, tode shortcut decisions,
+and theme files flow machine → repo via `sync.sh`.
 
 ## Bootstrap
 
@@ -45,9 +51,14 @@ git clone https://github.com/zfan2356/shellos.git
 
 ## Keeping the repo fresh
 
-After changing any live config:
-
-```bash
-./scripts/sync.sh   # copies live files into the repo, shows the diff
-git add -A && git commit
-```
+- Editor settings/keybindings are symlinked — any change (settings UI or
+  editing the file) is already in the repo working tree. `git diff`, run
+  `./scripts/redline.sh` (editors auto-write keys; remote-ssh host maps must
+  be stripped before committing), commit.
+- Installed/removed an extension? Update `editor/extensions.<target>.txt`
+  in the same commit. Internal-only extensions go in the untracked
+  `editor/extensions.<target>.local.txt`.
+- Changed kitty config, tode shortcuts, or the tode theme? Run
+  `./scripts/sync.sh` to pull the change into the repo.
+- Always before committing: `./scripts/redline.sh` must print
+  `redline: clean`.
