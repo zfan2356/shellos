@@ -55,6 +55,15 @@ UI with GPU. No pixels cross the network — typing latency becomes one
 round-trip instead of a frame upload. Use this for real editing sessions;
 plain remote tode (pixel streaming, see caps above) is only for quick looks.
 
+The remote UX can match VS Code Remote exactly: replace the remote `tode`
+command with a small wrapper that (1) ensures the local code-server is up,
+then (2) uses kitty's forwarded remote control (`kitten @ launch` works on
+the remote when ssh.conf sets `forward_remote_control yes`) to open a new
+local kitty tab running `tode-remote` against that folder. Typing `tode .`
+on the remote then opens a locally-rendered editor, and the remote no longer
+needs the Electron half of tode at all — only code-server. Keep the original
+launcher as a `tode-pixel` fallback and pass `-*` flags through to it.
+
 ## Things to check on an unfamiliar remote
 
 Electron-based tools (tode's browser component) are picky about old server
