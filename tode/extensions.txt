@@ -1,6 +1,5 @@
 antfu.theme-vitesse
 chadalen.vscode-jetbrains-icon-theme
-continue.continue
 detachhead.basedpyright
 eamodio.gitlens
 github.copilot
