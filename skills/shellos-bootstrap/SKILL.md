@@ -60,7 +60,8 @@ cp $REPO/tode/theme/palette.json $REPO/tode/theme/live-theme.json \
 Notes on what these files are:
 - `shortcuts.json` is the decision record from `tode --shortcut-setup`
   (56 kitty/editor conflicts, resolved: pane switching only `alt+cmd+arrows`,
-  kitty tabs `ctrl+shift+←→` + `alt+1-9`, `cmd+d` = editor duplicate-line,
+  kitty tabs `cmd+t`/`cmd+w`, editor tabs `ctrl+t`/`ctrl+w`, tab navigation
+  `ctrl+shift+←→` + `alt+1-9`, `cmd+d` = editor duplicate-line,
   kitty vsplit moved to `ctrl+shift+d`, `cmd+=/-/0` = browser page zoom,
   kitty font zoom on default `ctrl+shift+=/-`). The generated kitty side of
   this contract is `kitty/tode/keybinds.kitty.conf`, restored in step 1 —
@@ -123,7 +124,8 @@ step 2 make the editor auto-select `.venv/bin/python` wherever one exists.
   interpreter without manual selection; go-to-definition works
   (basedpyright), no Pylance in the extension list.
 - `pkill -USR1 -x kitty` applied the kitty side; `cmd+d` duplicates a line
-  in the editor and `ctrl+shift+d` splits kitty.
+  in the editor, `ctrl+shift+d` splits kitty, `cmd+t`/`cmd+w` manage kitty
+  tabs, and `ctrl+t`/`ctrl+w` manage editor tabs.
 
 ## Remote dev server
 

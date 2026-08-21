@@ -30,7 +30,9 @@
       "choice": "keep"
     },
     "ctrl+shift+q": {
-      "choice": "keep"
+      "choice": "terminal",
+      "action": "close_tab",
+      "key": "cmd+w"
     },
     "ctrl+shift+-": {
       "choice": "keep"
@@ -138,8 +140,7 @@
       "action": "new_os_window_with_cwd"
     },
     "cmd+w": {
-      "choice": "terminal",
-      "action": "close_tab"
+      "choice": "keep"
     },
     "cmd+1": {
       "choice": "terminal",
