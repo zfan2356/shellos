@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "terminal": "kitty",
+  "choices": {
+    "ctrl+shift+g": {
+      "choice": "keep"
+    },
+    "ctrl+shift+/": {
+      "choice": "keep"
+    },
+    "ctrl+shift+enter": {
+      "choice": "keep"
+    },
+    "ctrl+shift+r": {
+      "choice": "keep"
+    },
+    "ctrl+shift+2": {
+      "choice": "keep"
+    },
+    "ctrl+shift+5": {
+      "choice": "keep"
+    },
+    "ctrl+shift+6": {
+      "choice": "keep"
+    },
+    "ctrl+shift+right": {
+      "choice": "keep"
+    },
+    "ctrl+shift+left": {
+      "choice": "keep"
+    },
+    "ctrl+shift+q": {
+      "choice": "keep"
+    },
+    "ctrl+shift+-": {
+      "choice": "keep"
+    },
+    "ctrl+shift+e": {
+      "choice": "keep"
+    },
+    "ctrl+shift+a": {
+      "choice": "keep"
+    },
+    "ctrl+shift+f5": {
+      "choice": "keep"
+    },
+    "cmd+v": {
+      "choice": "keep"
+    },
+    "cmd+t": {
+      "choice": "keep"
+    },
+    "shift+cmd+d": {
+      "choice": "keep"
+    },
+    "cmd+k": {
+      "choice": "keep"
+    },
+    "alt+cmd+k": {
+      "choice": "keep"
+    },
+    "shift+cmd+/": {
+      "choice": "keep"
+    },
+    "ctrl+cmd+f": {
+      "choice": "keep"
+    },
+    "alt+cmd+left": {
+      "choice": "keep"
+    },
+    "alt+cmd+right": {
+      "choice": "keep"
+    },
+    "alt+cmd+up": {
+      "choice": "keep"
+    },
+    "alt+cmd+down": {
+      "choice": "keep"
+    },
+    "ctrl+shift+`": {
+      "choice": "terminal",
+      "action": "move_window_to_top"
+    },
+    "ctrl+tab": {
+      "choice": "terminal",
+      "action": "next_tab"
+    },
+    "ctrl+shift+tab": {
+      "choice": "terminal",
+      "action": "previous_tab"
+    },
+    "cmd+up": {
+      "choice": "terminal",
+      "action": "neighboring_window top"
+    },
+    "cmd+down": {
+      "choice": "terminal",
+      "action": "neighboring_window bottom"
+    },
+    "cmd+left": {
+      "choice": "terminal",
+      "action": "neighboring_window left"
+    },
+    "cmd+right": {
+      "choice": "terminal",
+      "action": "neighboring_window right"
+    },
+    "shift+cmd+left": {
+      "choice": "terminal",
+      "action": "previous_tab"
+    },
+    "shift+cmd+right": {
+      "choice": "terminal",
+      "action": "next_tab"
+    },
+    "shift+cmd+[": {
+      "choice": "terminal",
+      "action": "previous_tab"
+    },
+    "shift+cmd+]": {
+      "choice": "terminal",
+      "action": "next_tab"
+    },
+    "cmd+f": {
+      "choice": "terminal",
+      "action": "search_scrollback"
+    },
+    "cmd+r": {
+      "choice": "terminal",
+      "action": "start_resizing_window"
+    },
+    "cmd+enter": {
+      "choice": "terminal",
+      "action": "new_window"
+    },
+    "cmd+n": {
+      "choice": "terminal",
+      "action": "new_os_window_with_cwd"
+    },
+    "cmd+w": {
+      "choice": "terminal",
+      "action": "close_tab"
+    },
+    "cmd+1": {
+      "choice": "terminal",
+      "action": "first_window"
+    },
+    "cmd+3": {
+      "choice": "terminal",
+      "action": "third_window"
+    },
+    "cmd+5": {
+      "choice": "terminal",
+      "action": "fifth_window"
+    },
+    "cmd+9": {
+      "choice": "terminal",
+      "action": "ninth_window"
+    },
+    "cmd+,": {
+      "choice": "terminal",
+      "action": "edit_config_file"
+    },
+    "cmd+l": {
+      "choice": "terminal",
+      "action": "clear_terminal last_command active"
+    },
+    "alt+cmd+r": {
+      "choice": "terminal",
+      "action": "clear_terminal reset active"
+    },
+    "alt+cmd+s": {
+      "choice": "terminal",
+      "action": "toggle_macos_secure_keyboard_entry"
+    },
+    "shift+cmd+i": {
+      "choice": "terminal",
+      "action": "set_tab_title"
+    },
+    "cmd+d": {
+      "choice": "terminal",
+      "action": "launch --location=vsplit --cwd=current",
+      "key": "ctrl+shift+d"
+    },
+    "cmd+=": {
+      "choice": "terminal",
+      "action": "change_font_size all +2.0"
+    },
+    "shift+cmd+=": {
+      "choice": "terminal",
+      "action": "change_font_size all +2.0"
+    },
+    "cmd+-": {
+      "choice": "terminal",
+      "action": "change_font_size all -2.0"
+    },
+    "shift+cmd+-": {
+      "choice": "terminal",
+      "action": "change_font_size all -2.0"
+    },
+    "cmd+0": {
+      "choice": "terminal",
+      "action": "change_font_size all 0"
+    }
+  }
+}

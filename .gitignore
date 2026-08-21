@@ -1,0 +1,2 @@
+# local-only: private host aliases, never commit
+kitty/ssh.conf

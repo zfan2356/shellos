@@ -1,0 +1,8 @@
+[submodule "third-party/kitty"]
+	path = third-party/kitty
+	url = https://github.com/kovidgoyal/kitty.git
+	shallow = true
+[submodule "third-party/terminal-code"]
+	path = third-party/terminal-code
+	url = https://github.com/zenbu-labs/terminal-code.git
+	shallow = true
