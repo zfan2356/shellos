@@ -28,6 +28,15 @@ which is what makes remote-side tooling able to open local panes/tabs.
 
 - Install from GitHub releases (same as local; the official CDN may be
   unreachable from either side).
+- **Cap the frame stream.** tode renders the editor to pixels on whichever
+  machine runs it and streams frames to the local kitty — over SSH that is
+  the whole bottleneck (VS Code Remote feels faster because it ships RPC,
+  not pixels; a headless remote also renders on CPU). Export in the remote
+  tode launcher:
+  ```bash
+  export TERMINAL_BROWSER_MAX_PIXELS=2100000   # ~1x scale, not retina 2x → ~4x less data
+  export TERMINAL_BROWSER_FPS=20
+  ```
 - Restore the same `tode/` config from this repo into the remote's
   `~/.local/share/tode/` — settings and shortcuts are shared; the kitty
   keybinding side stays local-only (interception happens where kitty runs).
