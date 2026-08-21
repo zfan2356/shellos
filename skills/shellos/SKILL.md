@@ -44,7 +44,11 @@ inside the repo.
    next connect; that is acceptable). The forbidden-pattern list lives in
    `.redline-local` (untracked on purpose — the list itself is sensitive;
    recreate from local Claude memory if missing).
-3. Commit with a message saying WHAT changed and WHY, then `git push`.
+3. Commit directly on `main` with a message saying WHAT changed and WHY, then
+   push `main`. Do not create a pull request unless the user explicitly asks
+   for one. If work was prepared on another branch, update local `main` with a
+   fast-forward or cherry-pick as appropriate, push `main`, and close any
+   superseded draft pull request.
 
 ## When kitty or tode is upgraded
 
