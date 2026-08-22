@@ -11,6 +11,30 @@ terminal environment; this skill pushes local reality INTO it. The reverse
 direction (repo → fresh machine) is `skills/shellos-bootstrap/SKILL.md`
 inside the repo.
 
+## The repo is the standard
+
+Everything shellos manages — kitty config, editor config, the remote tode
+wrapper, deploy scripts — has exactly one canonical form: the one in this
+repo. Whenever shellos is being updated, or any local or remote state that
+shellos manages is being changed, conform to the repo:
+
+- Deploy from the repo with its scripts (`link.sh`, `sync.sh`,
+  `deploy-remote-tode.sh`); never hand-copy files or install a forked
+  variant on a machine.
+- If a machine cannot run the repo version (a tool too old, a missing
+  dependency), fix the blocker — upgrade the tool — and then deploy the
+  repo version. Do not leave an ad-hoc downgrade or an older copy in place
+  as a workaround; that is drift, not a fix.
+- If the repo itself is wrong, change the repo first, then redeploy to
+  every machine it applies to.
+- Machine-local divergence is allowed only for the explicitly local-only
+  files: kitty `ssh.conf`, `.redline-local`, the remote
+  `~/.config/shellos/remote-tode.env`, and machine-specific binary patches.
+- Live-config edits (shortcuts, theme, editor settings) are folded back via
+  the sanctioned flows below (`sync.sh` snapshot or the symlinks) in the
+  same session — the working tree should never silently disagree with
+  reality.
+
 ## How config flows
 
 - **Editor config is symlinked, not copied**: `editor/settings.json` is the
