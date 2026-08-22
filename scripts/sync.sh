@@ -2,7 +2,7 @@
 # Snapshot the parts of the live environment where the MACHINE is the source
 # of truth: kitty config, tode shortcut decisions, tode theme files.
 # Editor settings/keybindings/extensions flow the OTHER way — they are
-# canonical in editor/ and deployed with scripts/apply.sh.
+# canonical in editor/; scripts/link.sh deploys the symlinked files.
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
