@@ -26,6 +26,8 @@ if ! curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
     "exec env SHELL='$REMOTE_SHELL' '$CS' --auth none --bind-addr 127.0.0.1:$PORT \
        --user-data-dir $HOME/.local/share/tode/vscode/user-data \
        --extensions-dir $HOME/.local/share/tode/vscode/extensions \
+       --app-name tode --disable-telemetry --disable-update-check \
+       --disable-workspace-trust --disable-getting-started-override --ignore-last-opened \
        >> $HOME/wxg/.logs/code-server-$PORT.log 2>&1"
   for _ in $(seq 1 20); do
     curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break

@@ -38,7 +38,11 @@ remote_shell=$(ssh "$SSH_HOST" '
     || { command -v getent >/dev/null 2>&1 && getent passwd "$(id -u)" | cut -d: -f7; } \
     || printf "%s\n" /bin/sh
 ')
-remote_codex=$(ssh "$SSH_HOST" 'command -v codex 2>/dev/null || true')
+remote_codex=$(ssh "$SSH_HOST" '
+  command -v codex 2>/dev/null \
+    || { [ -x /opt/conda/bin/codex ] && printf "%s\n" /opt/conda/bin/codex; } \
+    || true
+')
 profile_name=$(basename "$remote_shell")
 
 python3 - "$REPO/editor/settings.json" "$work/settings.json" \

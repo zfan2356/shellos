@@ -72,13 +72,12 @@ command -v kitten
 
 ## VS Code Remote-style mode (recommended over a WAN)
 
-`scripts/tode-remote <ssh-host> [remote-path] [port]` flips the architecture
-to match VS Code Remote: code-server runs on the remote (started in a
-detached tmux; does not survive an instance restart), an SSH tunnel carries
-only its WebSocket/RPC traffic, and the LOCAL terminal-browser renders the
-UI with GPU. No pixels cross the network — typing latency becomes one
-round-trip instead of a frame upload. Use this for real editing sessions;
-plain remote tode (pixel streaming, see caps above) is only for quick looks.
+`tode --ssh <ssh-host> [remote-path]` is the canonical remote path. It runs
+code-server on the remote while the LOCAL terminal-browser supplies app mode,
+the injector, browser glue, theme, and font. No pixels cross the network —
+typing latency becomes one round-trip instead of a frame upload. The older
+`scripts/tode-remote <ssh-host> [remote-path] [port]` fixed-port launcher is
+kept as a compatibility and debugging tool.
 
 Deploy the remote entrypoint and matching editor configuration from the Mac:
 
@@ -95,12 +94,13 @@ The deployer:
 - renders `editor/settings.json` for Linux, changing only the Codex binary and
   integrated-terminal profile;
 - copies `editor/keybindings.tode.json` exactly;
-- records the Mac-side SSH alias and selected port in the remote-only
+- records the Mac-side SSH alias and compatibility port in the remote-only
   `~/.config/shellos/remote-tode.env`;
-- restarts only the matching detached code-server tmux session.
+- stops only the matching legacy detached code-server tmux session.
 
 Typing `tode .` remotely then uses kitty's forwarded control channel to open
-the locally rendered editor as an `overlay-main` over the current SSH window.
+the locally rendered editor through native `tode --ssh` as an `overlay-main`
+over the current SSH window.
 It does not add a tab. Closing the overlay reveals the same SSH shell. The
 wrapper returns after the overlay has been created; the SSH shell remains
 available underneath it.
