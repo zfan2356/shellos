@@ -28,7 +28,19 @@ if [ ! -f "$TARGET" ]; then
   exit 1
 fi
 
-node - "$TARGET" <<'JS'
+# node from PATH, or the copy code-server ships (always present next to tode)
+NODE=$(command -v node || true)
+if [ -z "$NODE" ]; then
+  for candidate in "$HOME"/.local/share/tode/code-server/*/lib/node; do
+    [ -x "$candidate" ] && NODE="$candidate" && break
+  done
+fi
+if [ -z "$NODE" ]; then
+  echo "node not found (PATH or code-server lib)" >&2
+  exit 1
+fi
+
+"$NODE" - "$TARGET" <<'JS'
 const fs = require("fs");
 const target = process.argv[2];
 let src = fs.readFileSync(target, "utf8");
@@ -75,5 +87,5 @@ console.log("patched: " + target);
 console.log("backup:  " + target + ".orig");
 JS
 
-node --check "$TARGET"
+"$NODE" --check "$TARGET"
 echo "syntax ok — restart the tode daemon (tode --shutdown) to pick it up"
