@@ -73,6 +73,17 @@ Notes on what these files are:
   `basedpyright.analysis.typeCheckingMode: "off"` (lint belongs to ruff;
   the language server is only for navigation).
 
+Disable macOS App Nap for tode's renderer (it is a headless Electron with no
+visible windows of its own, so macOS naps it whenever the user switches away;
+the first interaction after coming back then stalls on wake-up plus a
+full-frame redraw):
+
+```bash
+defaults write dev.zenbu.terminal-browser NSAppSleepDisabled -bool YES
+```
+
+Takes effect on the next daemon launch (`tode --shutdown`, then reopen).
+
 ## 3. Extensions
 
 `$REPO/editor/extensions.tode.txt` is the exact inventory. Two supported
