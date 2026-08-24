@@ -84,6 +84,20 @@ defaults write dev.zenbu.terminal-browser NSAppSleepDisabled -bool YES
 
 Takes effect on the next daemon launch (`tode --shutdown`, then reopen).
 
+Then patch the vendored terminal-browser (macOS):
+
+```bash
+$REPO/scripts/patch-terminal-browser.sh
+```
+
+Upstream renders the active tab at full display rate even when the terminal
+pane lost focus hours ago; on macOS that sustained pixel churn into a hidden
+kitty window can wedge kitty's GL→Metal texture uploads and stall the whole
+desktop. The patch throttles the active tab to 2 fps while the pane is
+unfocused (details in the script header). Idempotent, keeps a `.orig`
+backup — **re-run it after every tode upgrade**, upgrades replace the
+install dir.
+
 ## 3. Extensions
 
 `$REPO/editor/extensions.tode.txt` is the exact inventory. Two supported
