@@ -381,7 +381,6 @@
   "git.openRepositoryInParentFolders": "always",
   "remote.autoForwardPortsSource": "hybrid",
   "window.autoDetectColorScheme": false,
-  "vim.disableExtension": true,
   "cursor.composer.conversationDensity": "detailed",
   "editor.minimap.sectionHeaderFontSize": 7,
   "debug.console.fontSize": 10,
