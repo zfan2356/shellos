@@ -29,12 +29,19 @@ project=$(cd "$project" 2>/dev/null && pwd) || {
   exit 1
 }
 
-if [ -n "${KITTY_LISTEN_ON:-}" ] && command -v kitten >/dev/null 2>&1; then
+# The ssh kitten copies its kitten binary here even when the login shell's
+# PATH setup later hides it.
+KITTEN_BIN=$(command -v kitten 2>/dev/null || true)
+if [ -z "$KITTEN_BIN" ] && [ -x "$HOME/.local/share/kitty-ssh-kitten/kitty/bin/kitten" ]; then
+  KITTEN_BIN="$HOME/.local/share/kitty-ssh-kitten/kitty/bin/kitten"
+fi
+
+if [ -n "${KITTY_LISTEN_ON:-}" ] && [ -n "$KITTEN_BIN" ]; then
   if [ -z "${TODE_REMOTE_SSH_HOST:-}" ]; then
     echo "TODE_REMOTE_SSH_HOST is missing from $CONFIG" >&2
     exit 1
   fi
-  kitten @ launch --type=overlay-main --self --title "tode $(basename "$project")" \
+  "$KITTEN_BIN" @ launch --type=overlay-main --self --title "tode $(basename "$project")" \
     /bin/sh -lc 'exec "$HOME/.local/bin/tode" --ssh "$@"' sh \
     "$TODE_REMOTE_SSH_HOST" "$project" >/dev/null \
     && {
@@ -42,8 +49,16 @@ if [ -n "${KITTY_LISTEN_ON:-}" ] && command -v kitten >/dev/null 2>&1; then
       exit 0
     }
   echo "kitty remote control failed; falling back to pixel mode" >&2
+elif [ -z "${KITTY_WINDOW_ID:-}" ]; then
+  # Plain `ssh` session: no remote control, and pixel mode cannot locate the
+  # local kitty pane either — it would only die with a cryptic error.
+  echo "this session has no kitty environment, so tode cannot render anywhere." >&2
+  echo "reconnect with: kitten ssh ${TODE_REMOTE_SSH_HOST:-<host>}" >&2
+  exit 1
+elif [ -z "${KITTY_LISTEN_ON:-}" ]; then
+  echo "no forwarded kitty remote control (ssh.conf forward_remote_control?); falling back to pixel mode" >&2
 else
-  echo "no forwarded kitty remote control (use kitten ssh); falling back to pixel mode" >&2
+  echo "kitten binary not found on this host; falling back to pixel mode" >&2
 fi
 
 pixel "$project"
