@@ -12,13 +12,16 @@
 #
 # Fix: upstream already receives terminal focus events (engine "focus" →
 # session onFocus → controller.setActive) but only uses them to blur input.
-# This patch extends setActive to drop the active tab's webContents to 2 fps
-# on focus loss and restore the normal rate on focus gain. Frames keep
-# trickling while unfocused, so the terminal's last texture stays warm and
-# no full-frame invalidate is needed on wake.
+# This patch extends setActive to STOP offscreen painting entirely on focus
+# loss (Electron OSR stopPainting) and restore painting + one invalidate on
+# focus gain. Merely lowering the frame rate is not enough: frames the
+# terminal never draws (hidden window) are never consumed, so any nonzero
+# rate accumulates transfer buffers for hours and the backlog wedges the
+# terminal on wake. Zero frames while unfocused, one clean frame on return.
 #
-# Idempotent; keeps a .orig backup. Re-run after every tode upgrade
-# (upgrades replace the install dir wholesale).
+# Idempotent; keeps a .orig backup and migrates any older patch version by
+# restoring from it first. Re-run after every tode upgrade (upgrades
+# replace the install dir wholesale).
 set -euo pipefail
 
 TARGET="${1:-$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js}"
@@ -45,10 +48,20 @@ const fs = require("fs");
 const target = process.argv[2];
 let src = fs.readFileSync(target, "utf8");
 
-const patchedMark = "/* shellos: unfocused-throttle */";
+const patchedMark = "/* shellos: unfocused-throttle v2 */";
+const oldMark = "/* shellos: unfocused-throttle */";
 if (src.includes(patchedMark)) {
   console.log("already patched: " + target);
   process.exit(0);
+}
+if (src.includes(oldMark)) {
+  const orig = fs.readFileSync(target + ".orig", "utf8");
+  if (orig.includes(oldMark) || orig.includes(patchedMark)) {
+    console.error(".orig backup is itself patched — reinstall tode to recover a pristine bundle");
+    process.exit(1);
+  }
+  src = orig;
+  console.log("migrating v1 patch: restored pristine source from .orig");
 }
 
 const anchor = `  setActive(active) {
@@ -66,7 +79,14 @@ const replacement = `  setActive(active) {
     ${patchedMark}
     if (this.stopped || this.framePinned) return;
     try {
-      this.window.webContents.setFrameRate(active ? this.visible ? frameRate() : 4 : 2);
+      const wc = this.window.webContents;
+      if (active) {
+        if (!wc.isPainting()) wc.startPainting();
+        wc.setFrameRate(this.visible ? frameRate() : 4);
+        if (this.visible) wc.invalidate();
+      } else {
+        wc.stopPainting();
+      }
     } catch {
     }
   }`;
@@ -80,7 +100,7 @@ if (count !== 1) {
   process.exit(1);
 }
 
-fs.copyFileSync(target, target + ".orig");
+if (!fs.existsSync(target + ".orig")) fs.copyFileSync(target, target + ".orig");
 src = src.replace(anchor, replacement);
 fs.writeFileSync(target, src);
 console.log("patched: " + target);
