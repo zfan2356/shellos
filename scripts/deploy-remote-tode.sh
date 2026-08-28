@@ -117,6 +117,7 @@ echo "remote backup: $backup"
 echo "remote wrapper: $bin_dir/tode -> $share_dir/tode-remote-wrapper"
 REMOTE
 
+"$REPO/scripts/install-worktree-review.sh" "$SSH_HOST"
 echo "deployed remote tode via $SSH_HOST"
 echo "remote shell: $remote_shell"
 echo "remote port: $PORT"

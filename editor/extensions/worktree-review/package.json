@@ -1,0 +1,281 @@
+{
+  "name": "worktree-review",
+  "displayName": "Worktree Review",
+  "description": "Review cumulative branch changes and Git worktree branches without rewriting repository state.",
+  "version": "0.3.1",
+  "publisher": "zfan2356",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zfan2356/shellos.git",
+    "directory": "editor/extensions/worktree-review"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "resources/**",
+    "src/**"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Worktree Review only reads Git metadata and opens local diff views for the current workspace."
+    }
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:worktreeReview.sidebar.changes",
+    "onView:worktreeReview.sidebar.worktrees",
+    "onView:worktreeReview.secondaryDiff",
+    "onCommand:worktreeReview.refresh",
+    "onCommand:worktreeReview.refreshBranchChanges",
+    "onCommand:worktreeReview.selectBranchBaseRef",
+    "onCommand:worktreeReview.toggleBranchChanges",
+    "onCommand:worktreeReview.selectBaseRef",
+    "onCommand:worktreeReview.selectWorktree",
+    "onCommand:worktreeReview.selectMode",
+    "onCommand:worktreeReview.openCurrentFileReview",
+    "onCommand:worktreeReview.openChangedFile",
+    "onCommand:worktreeReview.focusReview",
+    "onCommand:worktreeReview.focusDiffPanel",
+    "onCommand:worktreeReview.copyWorktreePath"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Worktree Review",
+      "properties": {
+        "worktreeReview.gitPath": {
+          "type": "string",
+          "default": "git",
+          "description": "Path to the Git executable."
+        },
+        "worktreeReview.includeCurrentWorktree": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the current workspace worktree in the review list."
+        },
+        "worktreeReview.branchChanges.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show cumulative current-branch changes as a read-only Source Control provider."
+        },
+        "worktreeReview.branchChanges.baseRef": {
+          "type": "string",
+          "default": "auto",
+          "scope": "resource",
+          "description": "Base ref whose fork point with HEAD is used for cumulative branch changes. Use auto to prefer origin/HEAD, then conventional main, master, or dev refs."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "worktreeReview.refresh",
+        "title": "Refresh",
+        "category": "Worktree Review",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "worktreeReview.refreshBranchChanges",
+        "title": "Refresh Branch Changes",
+        "category": "Worktree Review",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "worktreeReview.selectBranchBaseRef",
+        "title": "Select Branch Base Ref",
+        "category": "Worktree Review",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "worktreeReview.toggleBranchChanges",
+        "title": "Toggle Branch Changes",
+        "category": "Worktree Review",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "worktreeReview.selectBaseRef",
+        "title": "Select Base Ref",
+        "category": "Worktree Review",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "worktreeReview.selectWorktree",
+        "title": "Select Worktree",
+        "category": "Worktree Review",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "worktreeReview.selectMode",
+        "title": "Select Mode",
+        "category": "Worktree Review",
+        "icon": "$(settings)"
+      },
+      {
+        "command": "worktreeReview.openCurrentFileReview",
+        "title": "Open Current File Review",
+        "category": "Worktree Review",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "worktreeReview.openChangedFile",
+        "title": "Open Changed File",
+        "category": "Worktree Review",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "worktreeReview.focusReview",
+        "title": "Open Worktree Review",
+        "category": "Worktree Review",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "worktreeReview.focusDiffPanel",
+        "title": "Focus Diff Panel",
+        "category": "Worktree Review",
+        "icon": "$(layout-sidebar-right)"
+      },
+      {
+        "command": "worktreeReview.copyWorktreePath",
+        "title": "Copy Worktree Path",
+        "category": "Worktree Review",
+        "icon": "$(copy)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "worktreeReview",
+          "title": "Worktree Review",
+          "icon": "resources/worktree-review.svg"
+        }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "worktreeReviewSecondaryDiff",
+          "title": "Worktree Review Diff",
+          "icon": "resources/worktree-review.svg",
+          "when": "!worktreeReview.doesNotSupportSecondarySidebar"
+        }
+      ]
+    },
+    "views": {
+      "worktreeReview": [
+        {
+          "id": "worktreeReview.sidebar.changes",
+          "name": "Changes"
+        },
+        {
+          "id": "worktreeReview.sidebar.worktrees",
+          "name": "Worktrees"
+        }
+      ],
+      "worktreeReviewSecondaryDiff": [
+        {
+          "id": "worktreeReview.secondaryDiff",
+          "type": "webview",
+          "name": "Diff",
+          "when": "!worktreeReview.doesNotSupportSecondarySidebar"
+        }
+      ]
+    },
+    "menus": {
+      "scm/title": [
+        {
+          "command": "worktreeReview.refreshBranchChanges",
+          "when": "scmProvider == worktreeReview.branchChanges",
+          "group": "navigation@1"
+        },
+        {
+          "command": "worktreeReview.selectBranchBaseRef",
+          "when": "scmProvider == worktreeReview.branchChanges",
+          "group": "navigation@2"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "worktreeReview.refresh",
+          "when": "view == worktreeReview.sidebar.changes",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.openChangedFile",
+          "when": "view == worktreeReview.sidebar.changes",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.refresh",
+          "when": "view == worktreeReview.sidebar.worktrees",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.selectBaseRef",
+          "when": "view == worktreeReview.sidebar.worktrees",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.selectMode",
+          "when": "view == worktreeReview.sidebar.worktrees",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.openChangedFile",
+          "when": "view == worktreeReview.sidebar.worktrees",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.focusDiffPanel",
+          "when": "view == worktreeReview.sidebar.worktrees",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "worktreeReview.focusReview",
+          "when": "resourceScheme == file",
+          "group": "navigation@99"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "worktreeReview.selectBaseRef",
+          "when": "view == worktreeReview.sidebar.worktrees && viewItem == repo",
+          "group": "navigation"
+        },
+        {
+          "command": "worktreeReview.selectWorktree",
+          "when": "view == worktreeReview.sidebar.worktrees && (viewItem == worktree || viewItem == worktreeActive)",
+          "group": "inline"
+        },
+        {
+          "command": "worktreeReview.copyWorktreePath",
+          "when": "view == worktreeReview.sidebar.worktrees && (viewItem == worktree || viewItem == worktreeActive)",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "worktreeReview.openCurrentFileReview",
+          "when": "resourceScheme == file",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "node --check src/extension.js && node --check src/branch-changes.js && node --check src/branch-review-scm.js && node --check src/git-utils.js && node --check src/view-ids.js && node --check test/branch-changes.test.js && node --check test/git-utils.test.js && node --check test/manifest.test.js",
+    "test": "node --test test/*.test.js",
+    "check": "npm run lint && npm test",
+    "package:vsix": "bash scripts/package-vsix.sh"
+  },
+  "devDependencies": {}
+}

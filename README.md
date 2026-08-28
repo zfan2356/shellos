@@ -19,6 +19,7 @@ truth for my macOS terminal environment:
 |---|---|---|
 | `kitty/` | `~/.config/kitty/` | kitty.conf, theme, tode-generated keybinds (`ssh.conf` stays local-only) |
 | `editor/` | symlinked into tode + Cursor User dirs | **the** editor config: one shared `settings.json` for both editors, per-target keybindings, per-target extension lists |
+| `editor/extensions/worktree-review/` | packaged and installed into tode | bundled VS Code extension that renders cumulative branch changes as a read-only SCM provider |
 | `tode/shortcuts.json` | `~/.local/share/tode/` | shortcut-conflict decision record (source of the generated kitty keybinds) |
 | `tode/theme/` | `~/.local/share/tode/` | tode theme files (palette, live-theme, inject.css) |
 | `skills/shellos/` | `~/.claude/skills/shellos` (symlink) | agent skill: sync/apply workflow for this repo |
@@ -62,6 +63,11 @@ For a paired remote host, run `scripts/deploy-remote-tode.sh <ssh-alias>`
 after the local bootstrap. See `docs/remote-server.md` for the required
 `kitten ssh` entrypoint and the generated remote-only overrides.
 
+Worktree Review is maintained directly in this repository. Install or update
+it locally with `scripts/install-worktree-review.sh`, or on a paired remote
+host with `scripts/install-worktree-review.sh <ssh-alias>`. Remote deployment
+also installs the bundled extension automatically.
+
 ## Keeping the repo fresh
 
 - Editor settings/keybindings are symlinked — any change (settings UI or
@@ -71,6 +77,9 @@ after the local bootstrap. See `docs/remote-server.md` for the required
 - Installed/removed an extension? Update `editor/extensions.<target>.txt`
   in the same commit. Internal-only extensions go in the untracked
   `editor/extensions.<target>.local.txt`.
+- Changed the bundled Worktree Review extension? Run
+  `scripts/install-worktree-review.sh` locally and the same command with an
+  SSH alias for each remote Tode extension host.
 - Changed kitty config, tode shortcuts, or the tode theme? Run
   `./scripts/sync.sh` to pull the change into the repo.
 - Always before committing: `./scripts/redline.sh` must print

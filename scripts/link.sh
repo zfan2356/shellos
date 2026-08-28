@@ -15,3 +15,10 @@ link "$REPO/editor/settings.json"            ~/.local/share/tode/vscode/user-dat
 link "$REPO/editor/keybindings.tode.json"    ~/.local/share/tode/vscode/user-data/User/keybindings.json
 link "$REPO/editor/settings.json"            ~/Library/Application\ Support/Cursor/User/settings.json
 link "$REPO/editor/keybindings.cursor.json"  ~/Library/Application\ Support/Cursor/User/keybindings.json
+
+if command -v tode >/dev/null 2>&1 && command -v node >/dev/null 2>&1 \
+  && command -v npx >/dev/null 2>&1; then
+  "$REPO/scripts/install-worktree-review.sh"
+else
+  echo "skipped bundled Worktree Review install: tode, node, or npx is unavailable"
+fi
