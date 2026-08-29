@@ -68,18 +68,9 @@ async function resolveCommit(git, repoRoot, ref) {
 
 async function findCompareBase(git, repoRoot, baseCommit, headCommit) {
   try {
-    return await git.run(repoRoot, [
-      "merge-base",
-      "--fork-point",
-      baseCommit,
-      headCommit,
-    ]);
+    return await git.run(repoRoot, ["merge-base", baseCommit, headCommit]);
   } catch {
-    try {
-      return await git.run(repoRoot, ["merge-base", baseCommit, headCommit]);
-    } catch {
-      return baseCommit;
-    }
+    return baseCommit;
   }
 }
 

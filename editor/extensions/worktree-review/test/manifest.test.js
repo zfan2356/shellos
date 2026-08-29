@@ -72,6 +72,7 @@ test("branch changes contributes configuration, commands, and SCM title actions"
   );
 
   assert.equal(properties["worktreeReview.branchChanges.enabled"].default, true);
+  assert.equal(properties["worktreeReview.includeCurrentWorktree"].default, true);
   assert.equal(properties["worktreeReview.branchChanges.baseRef"].default, "auto");
   assert.equal(properties["worktreeReview.branchChanges.baseRef"].scope, "resource");
   assert.equal(commands.has("worktreeReview.refreshBranchChanges"), true);

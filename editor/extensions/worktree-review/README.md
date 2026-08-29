@@ -6,7 +6,7 @@ It is built for parallel AI-agent workflows where each agent owns a Git worktree
 
 ## Branch Changes source control
 
-The extension adds a read-only `Branch Changes` provider to the normal Source Control view. It shows the combined difference from the selected branch-point baseline to the current workspace, including:
+The extension adds a read-only `Branch Changes` provider to the normal Source Control view. It shows the combined difference from the selected base branch's merge base with the current branch to the current workspace, including:
 
 - changes already committed on the current branch
 - staged changes
@@ -29,11 +29,12 @@ The resolved base is always shown in the SCM group title and status tooltip. `Wo
 
 - Shows the current branch's cumulative changes in the Source Control view as a read-only unstaged-style group.
 - Shows Git worktrees for the current VS Code workspace repository.
-- Lets you choose a base ref, defaulting to the current branch.
+- Auto-detects the default branch as the base ref and lets you override it.
+- Selects the current workspace worktree as the initial review target.
 - Lets you choose an active worktree and review mode.
 - Decorates changed files and folders in the normal VS Code Explorer.
 - Opens a VS Code diff editor when you open a changed Explorer file in Diff mode:
-  - left side: base ref content
+  - left side: merge-base content
   - right side: the selected worktree file when it exists
 - Opens the selected worktree's real file when you open a changed Explorer file in Preview mode.
 - Includes uncommitted worktree edits in the right-side review view.
@@ -52,10 +53,10 @@ The normal Git provider remains unchanged and continues to show the real `git st
 
 ### Review another worktree
 
-1. Open your main repository in VS Code.
+1. Open either your feature worktree or the main repository in VS Code.
 2. Open the Worktree Review activity bar item.
-3. Select a base ref if the current branch is not the desired review base.
-4. Select the worktree you want to review.
+3. The current worktree is selected automatically. Select another worktree only if you want to review that branch instead.
+4. Select a base ref if the auto-detected default branch is not the desired review base.
 5. Select a mode:
    - `Off`: normal VS Code behavior
    - `Diff`: opening a changed Explorer file opens a base-vs-worktree diff

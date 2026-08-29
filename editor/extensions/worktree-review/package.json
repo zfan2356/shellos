@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review cumulative branch changes and Git worktree branches without rewriting repository state.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -61,7 +61,7 @@
         },
         "worktreeReview.includeCurrentWorktree": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Show the current workspace worktree in the review list."
         },
         "worktreeReview.branchChanges.enabled": {
@@ -73,7 +73,7 @@
           "type": "string",
           "default": "auto",
           "scope": "resource",
-          "description": "Base ref whose fork point with HEAD is used for cumulative branch changes. Use auto to prefer origin/HEAD, then conventional main, master, or dev refs."
+          "description": "Base ref whose merge base with HEAD is used for cumulative branch changes. Use auto to prefer origin/HEAD, then conventional main, master, or dev refs."
         }
       }
     },

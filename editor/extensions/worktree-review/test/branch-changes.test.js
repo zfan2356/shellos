@@ -22,7 +22,7 @@ test("collectBranchChanges merges committed, tracked workspace, and untracked ch
       if (args[0] === "rev-parse" && args[2] === "main^{commit}") {
         return "base-commit";
       }
-      if (args[0] === "rev-parse" && args[2] === "HEAD^{commit}") {
+      if (args[0] === "rev-parse" && args[2] === "feature^{commit}") {
         return "head-commit";
       }
       if (args[0] === "merge-base") {
@@ -45,7 +45,7 @@ test("collectBranchChanges merges committed, tracked workspace, and untracked ch
     },
   };
 
-  const result = await collectBranchChanges(git, "/repo", "main");
+  const result = await collectBranchChanges(git, "/repo", "main", "feature");
 
   assert.equal(result.baseCommit, "base-commit");
   assert.equal(result.headCommit, "head-commit");
@@ -97,7 +97,7 @@ test("findCompareBase falls back to the resolved base for unrelated histories", 
   );
 });
 
-test("findCompareBase prefers Git fork-point semantics", async () => {
+test("findCompareBase uses the latest common ancestor of base and target", async () => {
   const calls = [];
   const git = {
     async run(repoRoot, args) {
@@ -112,7 +112,7 @@ test("findCompareBase prefers Git fork-point semantics", async () => {
   );
   assert.deepEqual(calls, [
     {
-      args: ["merge-base", "--fork-point", "base-commit", "head-commit"],
+      args: ["merge-base", "base-commit", "head-commit"],
       repoRoot: "/repo",
     },
   ]);
@@ -246,4 +246,62 @@ test("collectBranchChanges reads committed, staged, unstaged, and untracked file
     ]
   );
   assert.equal(result.compareBaseRef, result.baseCommit);
+});
+
+test("collectBranchChanges compares merge-base to the selected feature worktree", async (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "worktree-review-direction-"));
+  const repoRoot = path.join(fixtureRoot, "repo");
+  const featureRoot = path.join(fixtureRoot, "feature");
+  fs.mkdirSync(repoRoot);
+  t.after(() => fs.rmSync(fixtureRoot, { force: true, recursive: true }));
+
+  const runGit = (args) =>
+    cp.execFileSync("git", args, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).replace(/[\r\n]+$/, "");
+
+  runGit(["init", "-b", "dev"]);
+  runGit(["config", "user.email", "worktree-review@example.com"]);
+  runGit(["config", "user.name", "Worktree Review Test"]);
+  fs.writeFileSync(path.join(repoRoot, "base.txt"), "base\n");
+  runGit(["add", "base.txt"]);
+  runGit(["commit", "-m", "Create base"]);
+
+  runGit(["checkout", "-b", "feature"]);
+  fs.writeFileSync(path.join(repoRoot, "feature.txt"), "feature\n");
+  runGit(["add", "feature.txt"]);
+  runGit(["commit", "-m", "Add feature"]);
+
+  runGit(["checkout", "dev"]);
+  fs.writeFileSync(path.join(repoRoot, "dev.txt"), "dev\n");
+  runGit(["add", "dev.txt"]);
+  runGit(["commit", "-m", "Advance dev"]);
+  runGit(["worktree", "add", featureRoot, "feature"]);
+
+  const git = {
+    async run(cwd, args, options = {}) {
+      const output = cp.execFileSync("git", ["-C", cwd, ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      return options.trim === false
+        ? output
+        : output.replace(/[\r\n]+$/, "");
+    },
+  };
+  const expectedMergeBase = runGit(["merge-base", "dev", "feature"]);
+  const result = await collectBranchChanges(
+    git,
+    featureRoot,
+    "dev",
+    "feature"
+  );
+
+  assert.equal(result.compareBaseRef, expectedMergeBase);
+  assert.deepEqual(
+    result.files.map((file) => [file.statusKind, file.path]),
+    [["A", "feature.txt"]]
+  );
 });

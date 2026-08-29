@@ -9,12 +9,14 @@ const {
   OPEN_CHANGE_COMMAND,
 } = require("./branch-review-scm");
 const {
+  AUTO_BASE_REF,
+  collectBranchChanges,
+  resolveBranchBase,
+} = require("./branch-changes");
+const {
   buildChangeIndex,
   formatError,
-  mergeFileStatuses,
   normalizeFsPath,
-  parseNameStatus,
-  parseUntrackedFiles,
   parseWorktreeList,
   relativePathFromRoot,
   shortSha,
@@ -170,6 +172,11 @@ function activate(context) {
   );
 
   provider.updateStatusBar();
+  provider.initialize().catch((error) =>
+    vscode.window.showWarningMessage(
+      `Worktree Review failed to initialize: ${formatError(error)}`
+    )
+  );
 
   if (provider.mode === "panel") {
     setTimeout(() => provider.focusDiffPanel(), 0);
@@ -660,6 +667,18 @@ class WorktreeReviewProvider {
     this.statusBar = statusBar;
   }
 
+  async initialize() {
+    const repos = await this.getRepositories();
+    for (const repo of repos) {
+      await this.selectCurrentWorktree(repo);
+    }
+
+    this._onDidChangeTreeData.fire();
+    this.decorationProvider && this.decorationProvider.refresh();
+    this.changesProvider && this.changesProvider.refresh();
+    this.updateStatusBar();
+  }
+
   refresh() {
     this._onDidChangeTreeData.fire();
     this.refreshActiveChanges();
@@ -748,7 +767,9 @@ class WorktreeReviewProvider {
 
       seen.add(key);
       const currentRef = await this.getCurrentRef(root);
-      const baseRef = this.baseRefs.get(key) || currentRef || "HEAD";
+      const baseRef =
+        this.baseRefs.get(key) ||
+        (await this.getDefaultBaseRef(root, folder.uri, currentRef));
       const activeWorktree = this.activeWorktrees.get(key);
       const repo = new RepoNode(root, currentRef, baseRef, key, activeWorktree, this.mode);
       this.repoCache.set(key, repo);
@@ -756,6 +777,40 @@ class WorktreeReviewProvider {
     }
 
     return repos;
+  }
+
+  async getDefaultBaseRef(repoRoot, resourceUri, currentRef) {
+    const configuredRef = vscode.workspace
+      .getConfiguration("worktreeReview", resourceUri)
+      .get("branchChanges.baseRef", AUTO_BASE_REF);
+
+    try {
+      const resolved = await resolveBranchBase(this.git, repoRoot, configuredRef);
+      return resolved.ref;
+    } catch {
+      return currentRef || "HEAD";
+    }
+  }
+
+  async selectCurrentWorktree(repo) {
+    if (this.activeWorktrees.has(repo.key)) {
+      return;
+    }
+
+    const output = await this.git.run(repo.repoRoot, ["worktree", "list", "--porcelain"]);
+    const currentRoot = normalizeFsPath(repo.repoRoot);
+    const current = parseWorktreeList(output).find(
+      (worktree) => normalizeFsPath(worktree.path) === currentRoot
+    );
+    if (!current) {
+      return;
+    }
+
+    const dirty = await this.isDirty(current.path);
+    const worktree = new WorktreeNode(repo, current, dirty, true);
+    this.activeWorktrees.set(repo.key, worktree);
+    repo.activeWorktree = worktree;
+    await this.rebuildChangeState(worktree);
   }
 
   async getRepoRoot(folderPath) {
@@ -789,7 +844,7 @@ class WorktreeReviewProvider {
     const parsed = parseWorktreeList(output);
     const includeCurrent = vscode.workspace
       .getConfiguration("worktreeReview")
-      .get("includeCurrentWorktree", false);
+      .get("includeCurrentWorktree", true);
     const currentRoot = normalizeFsPath(repo.repoRoot);
     const active = this.activeWorktrees.get(repo.key);
     const worktrees = [];
@@ -922,49 +977,13 @@ class WorktreeReviewProvider {
   }
 
   async getChangedFiles(worktree) {
-    const baseRef = worktree.repo.baseRef;
-    const headRef = worktree.headRef;
-    const compareBaseRef = await this.getCompareBaseRef(
-      worktree.repo.repoRoot,
-      baseRef,
-      headRef
+    const result = await collectBranchChanges(
+      this.git,
+      worktree.path,
+      worktree.repo.baseRef,
+      worktree.headRef
     );
-    const changed = await this.getDiffFiles(worktree.path, compareBaseRef);
-    const untracked = await this.getUntrackedFiles(worktree.path);
-    const files = mergeFileStatuses(changed, untracked);
-
-    return files.map((file) => ({
-      ...file,
-      compareBaseRef,
-    }));
-  }
-
-  async getCompareBaseRef(repoRoot, baseRef, headRef) {
-    try {
-      return await this.git.run(repoRoot, ["merge-base", baseRef, headRef]);
-    } catch {
-      return baseRef;
-    }
-  }
-
-  async getDiffFiles(worktreePath, compareBaseRef) {
-    const output = await this.git.run(
-      worktreePath,
-      ["diff", "--name-status", "--find-renames", "-z", compareBaseRef, "--"],
-      { trim: false }
-    );
-
-    return parseNameStatus(output);
-  }
-
-  async getUntrackedFiles(worktreePath) {
-    const output = await this.git.run(
-      worktreePath,
-      ["ls-files", "--others", "--exclude-standard", "-z"],
-      { trim: false }
-    );
-
-    return parseUntrackedFiles(output);
+    return result.files;
   }
 
   async selectBaseRef(node) {
