@@ -62,7 +62,7 @@ SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/assert-repo-first.sh"
 KITTY_PIN=$(git -C "$REPO/third-party/kitty" describe --tags --exact-match)
 TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-match)
 BREW_KITTY=$(brew info --cask --json=v2 kitty |
-  python3 -c 'import json,sys; print(json.load(sys.stdin)["casks"][0]["version"]')
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["casks"][0]["version"])')
 if [[ "v$BREW_KITTY" != "$KITTY_PIN" ]]; then
   echo "refusing to deploy: Homebrew kitty is v$BREW_KITTY but ShellOS pins $KITTY_PIN" >&2
   echo "update and push the kitty submodule pin first" >&2
