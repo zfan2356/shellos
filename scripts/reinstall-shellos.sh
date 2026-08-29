@@ -165,7 +165,10 @@ while IFS= read -r extension; do
   case "$extension" in
     tode.tode-bridge|tode.tode-theme) continue ;;
   esac
-  tode --uninstall-extension "$extension"
+  # Removing one extension can also remove a dependency that still appears in
+  # the initial snapshot. Continue through that expected "not installed"
+  # result; the exact-inventory verification below still rejects leftovers.
+  tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
 export EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":""}'
 while IFS= read -r extension; do

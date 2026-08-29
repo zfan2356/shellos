@@ -156,10 +156,13 @@ while IFS= read -r extension; do
   case "$extension" in
     tode.tode-bridge|tode.tode-theme|zfan2356.worktree-review) continue ;;
   esac
+  # Removing one extension can also remove a dependency that still appears in
+  # the initial snapshot. Final exact-inventory verification catches any real
+  # uninstall failure that leaves an unmanaged extension behind.
   "$code_server" \
     --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
-    --uninstall-extension "$extension"
+    --uninstall-extension "$extension" || true
 done <<< "$current"
 while IFS= read -r extension; do
   [[ -n "$extension" ]] || continue
