@@ -82,7 +82,7 @@ case "$(uname -m)" in
   x86_64|amd64|aarch64|arm64) ;;
   *) echo "unsupported paired-host architecture: $(uname -m)" >&2; exit 1 ;;
 esac
-for command in awk curl find grep install sed sort tar; do
+for command in awk curl find grep install python3 sed sort tar; do
   command -v "$command" >/dev/null 2>&1 || {
     echo "required paired-host command not found: $command" >&2
     exit 1
@@ -171,12 +171,35 @@ while IFS= read -r extension; do
   tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
 export EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":""}'
+extension_work=$(mktemp -d /tmp/shellos-local-extensions.XXXXXX)
+cleanup_extension_work() {
+  case "$extension_work" in /tmp/shellos-local-extensions.*) rm -rf -- "$extension_work" ;; esac
+}
+trap cleanup_extension_work EXIT
 while IFS= read -r extension; do
   [[ -n "$extension" && "$extension" != zfan2356.worktree-review ]] || continue
-  tode --install-extension "$extension"
+  if [[ "$extension" == openai.chatgpt ]]; then
+    vsix="$extension_work/openai.chatgpt.vsix"
+    SHELLOS_FULL_REINSTALL=1 \
+      "$REPO/scripts/download-marketplace-vsix.sh" "$extension" darwin-arm64 "$vsix"
+    tode --install-extension "$vsix"
+  else
+    tode --install-extension "$extension"
+  fi
 done < "$REPO/editor/extensions.tode.txt"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-worktree-review.sh"
 
+CURRENT_EXTENSIONS=$(tode --list-extensions | tr '[:upper:]' '[:lower:]')
+# Extension packs may install recommendations that are not part of the exact
+# ShellOS inventory. Remove them after all requested extensions are present.
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  case "$extension" in
+    tode.tode-bridge|tode.tode-theme) continue ;;
+  esac
+  grep -Fqx "$extension" "$REPO/editor/extensions.tode.txt" || \
+    tode --uninstall-extension "$extension" || true
+done <<< "$CURRENT_EXTENSIONS"
 CURRENT_EXTENSIONS=$(tode --list-extensions | tr '[:upper:]' '[:lower:]')
 while IFS= read -r extension; do
   [[ -n "$extension" ]] || continue

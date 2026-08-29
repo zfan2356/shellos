@@ -71,6 +71,10 @@ inventory, Worktree Review, and remote wrapper. The installer refuses to run
 without the SSH alias so a local-only deployment cannot be mistaken for a
 complete ShellOS reinstall.
 
+Large platform-specific extensions are resolved from official Visual Studio
+Marketplace metadata and downloaded from its official CDN by the full
+installer. Do not invoke that internal downloader or install a VSIX manually.
+
 ## Verify
 
 After the command completes, verify:
