@@ -271,6 +271,7 @@ test("collectBranchChanges compares merge-base to the selected feature worktree"
 
   runGit(["checkout", "-b", "feature"]);
   fs.writeFileSync(path.join(repoRoot, "feature.txt"), "feature\n");
+  runGit(["rm", "base.txt"]);
   runGit(["add", "feature.txt"]);
   runGit(["commit", "-m", "Add feature"]);
 
@@ -302,6 +303,9 @@ test("collectBranchChanges compares merge-base to the selected feature worktree"
   assert.equal(result.compareBaseRef, expectedMergeBase);
   assert.deepEqual(
     result.files.map((file) => [file.statusKind, file.path]),
-    [["A", "feature.txt"]]
+    [
+      ["D", "base.txt"],
+      ["A", "feature.txt"],
+    ]
   );
 });

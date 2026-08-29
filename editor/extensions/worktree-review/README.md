@@ -12,8 +12,9 @@ The extension adds a read-only `Branch Changes` provider to the normal Source Co
 - staged changes
 - unstaged changes
 - untracked files
+- files deleted on the current branch, shown with deleted status
 
-All four kinds are intentionally collapsed into one `Changes vs <base>` group, so a pushed feature branch looks like one set of unstaged edits. This is only a visual projection: the extension never moves `HEAD`, resets the index, or changes files.
+All change kinds are intentionally collapsed into one `Changes vs <base>` group, so a pushed feature branch looks like one set of unstaged edits. This is only a visual projection: the extension never moves `HEAD`, resets the index, or changes files.
 
 Click a file to open the native diff editor. The same base is also exposed through VS Code's quick-diff API, so editor gutter markers cover the whole branch delta.
 
