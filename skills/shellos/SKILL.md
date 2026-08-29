@@ -53,6 +53,10 @@ generated deployment of a committed repository revision.
    ```
 
    When a paired remote exists, omitting it is not a complete deployment.
+   A newly pulled submodule pin may temporarily appear modified because its
+   checkout still points at the previous commit. Do not repair it manually;
+   the complete installer updates every submodule to the committed pin while
+   still rejecting real uncommitted changes inside submodules.
 7. Verify that formal `HEAD` equals `origin/main`, the worktree is clean, local
    and remote versions match the committed submodule pins, every tracked patch
    is present, and the expected extension/skill inventory is installed.

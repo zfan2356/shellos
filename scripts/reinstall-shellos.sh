@@ -37,10 +37,16 @@ done
   echo "refusing to deploy: ShellOS checkout is not on main" >&2
   exit 1
 }
-[[ -z "$(git -C "$REPO" status --porcelain=v1)" ]] || {
+[[ -z "$(git -C "$REPO" status --porcelain=v1 --ignore-submodules=all)" ]] || {
   echo "refusing to deploy: ShellOS checkout has uncommitted files" >&2
   exit 1
 }
+git -C "$REPO" submodule foreach --quiet --recursive '
+  if test -n "$(git status --porcelain=v1 --untracked-files=all)"; then
+    echo "refusing to deploy: submodule $name has uncommitted files" >&2
+    exit 1
+  fi
+'
 git -C "$REPO" pull --ff-only origin main
 [[ "$(git -C "$REPO" rev-parse HEAD)" == "$(git -C "$REPO" rev-parse origin/main)" ]] || {
   echo "refusing to deploy: HEAD does not exactly match origin/main" >&2

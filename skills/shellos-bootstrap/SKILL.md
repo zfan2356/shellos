@@ -51,7 +51,9 @@ For an existing formal checkout, first ensure it is on clean `main`. Then run:
 
 The script itself performs `git pull --ff-only origin main`, verifies exact
 agreement with `origin/main`, initializes committed submodule pins, and refuses
-a dirty or divergent checkout.
+a dirty or divergent checkout. If a preceding pull changed a submodule pin,
+the temporary superproject `M` entry is expected; the installer updates it to
+the committed pin but still rejects real uncommitted files inside submodules.
 
 It then completely reinstalls the ShellOS-managed local environment:
 
