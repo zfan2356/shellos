@@ -6,90 +6,65 @@ It is built for parallel AI-agent workflows where each agent owns a Git worktree
 
 ## Branch Changes source control
 
-The extension adds a read-only `Branch Changes` provider to the normal Source Control view. It shows the combined difference from the selected base branch's merge base with the current branch to the current workspace, including:
+The extension adds a read-only `Branch Changes` provider to the normal Source Control view. It shows the combined difference from the selected base branch's merge base with the current branch to the current workspace, including committed, staged, unstaged, untracked, and deleted files.
 
-- changes already committed on the current branch
-- staged changes
-- unstaged changes
-- untracked files
-- files deleted on the current branch, shown with deleted status
+All change kinds are intentionally collapsed into one `Changes vs <base>` group. This is only a visual projection: the extension never moves `HEAD`, resets the index, or changes files.
 
-All change kinds are intentionally collapsed into one `Changes vs <base>` group, so a pushed feature branch looks like one set of unstaged edits. This is only a visual projection: the extension never moves `HEAD`, resets the index, or changes files.
+Click a file to open the native VS Code diff editor directly. Deleted files remain in the list with a `D` badge and open against an empty right-hand side. Added and untracked files open against an empty left-hand side.
 
-Click a file to open the native diff editor. The same base is also exposed through VS Code's quick-diff API, so editor gutter markers cover the whole branch delta.
-
-The provider is enabled by default. `worktreeReview.branchChanges.baseRef` defaults to `auto`, which prefers the remote default exposed by `origin/HEAD` and then checks conventional `main`, `master`, and `dev` refs. Set it explicitly for a repository when needed, for example:
+The provider is enabled by default. `worktreeReview.branchChanges.baseRef` defaults to `auto`, which prefers `origin/HEAD` and then checks conventional `main`, `master`, and `dev` refs. Set it explicitly when needed, for example:
 
 ```json
 "worktreeReview.branchChanges.baseRef": "origin/dev"
 ```
 
-The resolved base is always shown in the SCM group title and status tooltip. `Worktree Review: Select Branch Base Ref` changes it for the current window, and `Worktree Review: Toggle Branch Changes` hides or restores the provider.
+The actual comparison starts at the merge base of the selected base branch and the reviewed branch, then ends at the current worktree. This includes committed and uncommitted worktree changes without treating unrelated changes added to the base branch later as part of the review.
 
-## MVP features
+## Review controls
 
-- Shows the current branch's cumulative changes in the Source Control view as a read-only unstaged-style group.
-- Shows Git worktrees for the current VS Code workspace repository.
-- Auto-detects the default branch as the base ref and lets you override it.
-- Selects the current workspace worktree as the initial review target.
-- Lets you choose an active worktree and review mode.
-- Decorates changed files and folders in the normal VS Code Explorer.
-- Opens a VS Code diff editor when you open a changed Explorer file in Diff mode:
-  - left side: merge-base content
-  - right side: the selected worktree file when it exists
-- Opens the selected worktree's real file when you open a changed Explorer file in Preview mode.
-- Includes uncommitted worktree edits in the right-side review view.
-- Provides an `Open Changed File` picker for added/untracked files that do not exist in the base Explorer tree.
+The command palette intentionally exposes only four `Worktree Review` controls:
+
+- `Select Base Branch`
+- `Use Side-by-Side Diff`
+- `Use Inline Diff`
+- `Toggle Automatic Review`
+
+Side-by-side mode keeps the two editor columns visible even when the editor becomes narrow. Inline mode shows additions and deletions in one editor column. They are two layouts for the same base-versus-worktree comparison.
+
+Automatic review decorates changed files in Explorer and replaces a changed source file opened from Explorer with its diff. Turning it off leaves manual review from the `Changes` tree available.
+
+Refresh, worktree selection, copy-path, and file-opening actions remain available only where they are relevant, such as view toolbars and item context menus.
 
 ## Usage
 
-### Review the current branch as unstaged changes
-
-1. Open the feature branch workspace in VS Code or Tode.
-2. Open Source Control.
-3. Expand `Branch Changes`, then `Changes vs <resolved base>`.
-4. Click any entry to open its base-vs-workspace diff.
+1. Open the feature worktree in VS Code or Tode.
+2. Open the Worktree Review activity bar item.
+3. Choose the base branch. The current worktree is selected automatically; another linked worktree can be selected from the Worktrees list.
+4. Choose side-by-side or inline layout.
+5. Click a file in `Changes` to open its diff directly, or open a decorated changed file from Explorer while automatic review is enabled.
 
 The normal Git provider remains unchanged and continues to show the real `git status`.
 
-### Review another worktree
+## Settings
 
-1. Open either your feature worktree or the main repository in VS Code.
-2. Open the Worktree Review activity bar item.
-3. The current worktree is selected automatically. Select another worktree only if you want to review that branch instead.
-4. Select a base ref if the auto-detected default branch is not the desired review base.
-5. Select a mode:
-   - `Off`: normal VS Code behavior
-   - `Diff`: opening a changed Explorer file opens a base-vs-worktree diff
-   - `Preview`: opening a changed Explorer file opens the real file from the selected worktree
-6. Return to Explorer and open files from the main repository tree.
-
-Added and untracked files do not exist in the main repository tree, so open them through `Worktree Review: Open Changed File`.
+- `worktreeReview.enabled`: enable Explorer decorations and automatic diff opening.
+- `worktreeReview.diffLayout`: `sideBySide` or `inline`.
+- `worktreeReview.includeCurrentWorktree`: include the current workspace in the Worktrees list.
+- `worktreeReview.branchChanges.enabled`: show the read-only Branch Changes SCM provider.
+- `worktreeReview.branchChanges.baseRef`: base branch used for merge-base comparison.
+- `worktreeReview.gitPath`: Git executable path.
 
 ## Development
 
-This first version has no build step.
-
-Open this folder in VS Code and press `F5` to launch an Extension Development Host.
+This extension has no build step.
 
 ```bash
-npm run lint
+npm run check
+npm run package:vsix
 ```
 
-The extension shells out to Git. If Git is not on `PATH`, set `worktreeReview.gitPath` in VS Code settings.
-
-## Manual testing fixture
-
-Generate a local repository with several linked worktrees:
+To create a manual review fixture on Windows:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-review-fixture.ps1
 ```
-
-The script prints the generated fixture root and the main repository path. Open the main repository path in VS Code, then use the Worktree Review activity bar item.
-
-## Design notes
-
-The first review mode uses VS Code's native diff editor, which is the most stable way to get a local PR-like file review flow.
-
-The second planned mode is a synthetic working-tree preview: open the worktree file directly and paint base-vs-worktree gutter decorations, so language navigation can reuse normal file-backed language services. That is intentionally not in the first MVP because it needs custom diff-to-decoration mapping and change navigation.

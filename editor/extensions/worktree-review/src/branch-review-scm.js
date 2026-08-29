@@ -105,8 +105,22 @@ class BranchReviewScmController {
       return;
     }
 
-    entry.baseOverride = selected.label;
+    return this.setBaseRef(entry.repoRoot, selected.label);
+  }
+
+  async setBaseRef(repoRoot, baseRef) {
+    let entry = this.entries.get(normalizeFsPath(repoRoot));
+    if (!entry) {
+      await this.synchronizeRepositories(true);
+      entry = this.entries.get(normalizeFsPath(repoRoot));
+    }
+    if (!entry) {
+      return undefined;
+    }
+
+    entry.baseOverride = baseRef;
     await this.refreshEntry(entry, true);
+    return { baseRef, repoRoot: entry.repoRoot };
   }
 
   async toggleEnabled() {

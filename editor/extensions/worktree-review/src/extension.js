@@ -31,31 +31,16 @@ const {
 
 const GIT_BLOB_SCHEME = "worktree-review";
 const MAX_GIT_BUFFER = 20 * 1024 * 1024;
-const MODE_KEY = "worktreeReview.mode";
-const SECONDARY_SIDEBAR_UNSUPPORTED_CONTEXT =
-  "worktreeReview.doesNotSupportSecondarySidebar";
-const DIFF_VIEW_CONTAINER_ID = "worktreeReviewSecondaryDiff";
-const DIFF_VIEW_ID = "worktreeReview.secondaryDiff";
-const MODES = {
-  off: {
-    label: "Off",
-    description: "Explorer opens normal files",
-    icon: "circle-slash",
+const DIFF_LAYOUTS = {
+  sideBySide: {
+    label: "Side by Side",
+    description: "Show base and worktree in separate columns",
+    icon: "split-horizontal",
   },
-  diff: {
-    label: "Diff",
-    description: "Explorer opens base vs worktree diffs",
-    icon: "diff",
-  },
-  panel: {
-    label: "Side Panel",
-    description: "Explorer updates the Worktree Review diff panel",
-    icon: "layout-sidebar-right",
-  },
-  preview: {
-    label: "Preview",
-    description: "Explorer opens real worktree files",
-    icon: "go-to-file",
+  inline: {
+    label: "Inline",
+    description: "Show additions and deletions in one column",
+    icon: "list-flat",
   },
 };
 
@@ -67,14 +52,12 @@ function activate(context) {
   });
   const provider = new WorktreeReviewProvider(git, context);
   const changes = new WorktreeChangesProvider(provider);
-  const diffPanel = new WorktreeDiffPanelProvider(git);
   const decorations = new ExplorerDecorationProvider(provider);
   const statusBar = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100
   );
 
-  provider.setDiffPanel(diffPanel);
   provider.setDecorationProvider(decorations);
   provider.setChangesProvider(changes);
   provider.setStatusBar(statusBar);
@@ -92,12 +75,6 @@ function activate(context) {
     worktrees: worktreesRegistration.viewId,
   });
 
-  vscode.commands.executeCommand(
-    "setContext",
-    SECONDARY_SIDEBAR_UNSUPPORTED_CONTEXT,
-    false
-  );
-
   context.subscriptions.push(
     branchScm,
     vscode.workspace.registerTextDocumentContentProvider(
@@ -106,16 +83,10 @@ function activate(context) {
     ),
     vscode.window.registerFileDecorationProvider(decorations),
     changesRegistration.treeView,
-    changesRegistration.treeView.onDidChangeSelection((event) =>
-      changes.handleTreeSelection(event.selection[0])
-    ),
     worktreesRegistration.treeView,
     worktreesRegistration.treeView.onDidChangeSelection((event) =>
       provider.handleTreeSelection(event.selection[0])
     ),
-    vscode.window.registerWebviewViewProvider(DIFF_VIEW_ID, diffPanel, {
-      webviewOptions: { retainContextWhenHidden: true },
-    }),
     statusBar,
     vscode.workspace.onDidOpenTextDocument((document) =>
       provider.handleOpenedDocument(document)
@@ -130,8 +101,14 @@ function activate(context) {
     vscode.commands.registerCommand("worktreeReview.refreshBranchChanges", () =>
       branchScm.refreshAll(true)
     ),
-    vscode.commands.registerCommand("worktreeReview.selectBranchBaseRef", (sourceControl) =>
-      branchScm.selectBaseRef(sourceControl)
+    vscode.commands.registerCommand(
+      "worktreeReview.selectBranchBaseRef",
+      async (sourceControl) => {
+        const selection = await branchScm.selectBaseRef(sourceControl);
+        if (selection) {
+          await provider.setBaseRef(selection.repoRoot, selection.baseRef);
+        }
+      }
     ),
     vscode.commands.registerCommand("worktreeReview.toggleBranchChanges", () =>
       branchScm.toggleEnabled()
@@ -139,14 +116,23 @@ function activate(context) {
     vscode.commands.registerCommand(OPEN_CHANGE_COMMAND, (target) =>
       branchScm.openChange(target)
     ),
-    vscode.commands.registerCommand("worktreeReview.selectBaseRef", (node) =>
-      provider.selectBaseRef(node)
-    ),
+    vscode.commands.registerCommand("worktreeReview.selectBaseRef", async (node) => {
+      const selection = await provider.selectBaseRef(node);
+      if (selection) {
+        await branchScm.setBaseRef(selection.repoRoot, selection.baseRef);
+      }
+    }),
     vscode.commands.registerCommand("worktreeReview.selectWorktree", (node) =>
       provider.selectWorktree(node)
     ),
-    vscode.commands.registerCommand("worktreeReview.selectMode", (node) =>
-      provider.selectMode(node)
+    vscode.commands.registerCommand("worktreeReview.useSideBySideDiff", () =>
+      provider.setDiffLayout("sideBySide")
+    ),
+    vscode.commands.registerCommand("worktreeReview.useInlineDiff", () =>
+      provider.setDiffLayout("inline")
+    ),
+    vscode.commands.registerCommand("worktreeReview.toggleReview", () =>
+      provider.toggleReview()
     ),
     vscode.commands.registerCommand("worktreeReview.openCurrentFileReview", () =>
       provider.openCurrentFileReview()
@@ -156,9 +142,6 @@ function activate(context) {
     ),
     vscode.commands.registerCommand("worktreeReview.focusReview", () =>
       provider.focusReview()
-    ),
-    vscode.commands.registerCommand("worktreeReview.focusDiffPanel", () =>
-      provider.focusDiffPanel()
     ),
     vscode.commands.registerCommand("worktreeReview.copyWorktreePath", (node) =>
       provider.copyWorktreePath(node)
@@ -178,9 +161,6 @@ function activate(context) {
     )
   );
 
-  if (provider.mode === "panel") {
-    setTimeout(() => provider.focusDiffPanel(), 0);
-  }
 }
 
 function deactivate() {}
@@ -293,20 +273,6 @@ class WorktreeChangesProvider {
     this._onDidChangeTreeData.fire();
   }
 
-  async handleTreeSelection(node) {
-    if (!node || node.kind !== "changedFile") {
-      return;
-    }
-
-    try {
-      await this.provider.openChangedFile(node);
-    } catch (error) {
-      vscode.window.showWarningMessage(
-        `Worktree Review open failed: ${formatError(error)}`
-      );
-    }
-  }
-
   async getChildren(node) {
     try {
       if (node && node.kind === "changedFolder") {
@@ -347,296 +313,16 @@ class WorktreeChangesProvider {
   }
 }
 
-class WorktreeDiffPanelProvider {
-  constructor(git) {
-    this.git = git;
-    this.view = undefined;
-    this.sequence = 0;
-    this.state = {
-      kind: "empty",
-      title: "No diff selected",
-      detail: "Select a changed file while Side Panel mode is active.",
-    };
-  }
-
-  resolveWebviewView(view) {
-    this.view = view;
-    view.webview.options = { enableScripts: false };
-    this.render();
-  }
-
-  async focus() {
-    try {
-      await vscode.commands.executeCommand(
-        `workbench.view.extension.${DIFF_VIEW_CONTAINER_ID}`
-      );
-    } catch {
-      // Some VS Code builds do not expose generated commands for contributed containers.
-    }
-
-    try {
-      await vscode.commands.executeCommand(`${DIFF_VIEW_ID}.focus`);
-    } catch {
-      // Older VS Code builds may not expose a generated focus command for the view.
-    }
-  }
-
-  clear() {
-    this.sequence += 1;
-    this.state = {
-      kind: "empty",
-      title: "No diff",
-      detail: "The selected file has no changes in the active worktree.",
-    };
-    this.render();
-  }
-
-  reset() {
-    this.sequence += 1;
-    this.state = {
-      kind: "empty",
-      title: "No diff selected",
-      detail: "Select a changed file while Side Panel mode is active.",
-    };
-    this.render();
-  }
-
-  async hide() {
-    this.reset();
-    if (!this.view || !this.view.visible) {
-      return;
-    }
-
-    const closed = await executeCommandBestEffort(
-      "workbench.action.closeAuxiliaryBar"
-    );
-    if (!closed) {
-      await executeCommandBestEffort("workbench.action.toggleAuxiliaryBar");
-    }
-  }
-
-  async showTarget(target, options = {}) {
-    if (options.reveal) {
-      await this.focus();
-    }
-
-    const sequence = ++this.sequence;
-    this.state = {
-      kind: "loading",
-      title: target.file.path,
-      detail: `${target.repo.baseRef}...${target.worktree.label}`,
-    };
-    this.render();
-
-    try {
-      const patch = await this.buildPatch(target);
-      if (sequence !== this.sequence) {
-        return;
-      }
-
-      this.state = {
-        kind: "diff",
-        target,
-        patch,
-        title: target.file.path,
-        detail: `${target.repo.baseRef}...${target.worktree.label}`,
-      };
-      this.render();
-    } catch (error) {
-      if (sequence !== this.sequence) {
-        return;
-      }
-
-      this.state = {
-        kind: "error",
-        title: target.file.path,
-        detail: formatError(error),
-      };
-      this.render();
-    }
-  }
-
-  async buildPatch(target) {
-    const { file, worktree } = target;
-    const compareBaseRef = file.compareBaseRef || worktree.repo.baseRef;
-    const args = [
-      "diff",
-      "--no-color",
-      "--find-renames",
-      "--unified=80",
-      compareBaseRef,
-      "--",
-    ];
-
-    if (file.oldPath) {
-      args.push(file.oldPath);
-    }
-    args.push(file.path);
-
-    const patch = await this.git.run(worktree.path, args, {
-      trim: false,
-      maxBuffer: MAX_GIT_BUFFER,
-    });
-    if (patch.trim()) {
-      return patch;
-    }
-
-    if (file.statusKind === "A") {
-      return makeSyntheticPatch("added", worktree.path, file.path);
-    }
-
-    if (file.statusKind === "D") {
-      const content = await this.git.run(
-        worktree.repo.repoRoot,
-        ["show", `${compareBaseRef}:${file.oldPath || file.path}`],
-        { trim: false, maxBuffer: MAX_GIT_BUFFER }
-      );
-      return makeSyntheticPatchFromContent("deleted", file.oldPath || file.path, content);
-    }
-
-    return `No textual diff for ${file.path}\n`;
-  }
-
-  render() {
-    if (!this.view) {
-      return;
-    }
-
-    this.view.webview.html = this.renderHtml(this.view.webview);
-  }
-
-  renderHtml(webview) {
-    const state = this.state;
-    const editorStyle = getEditorStyle();
-    const status =
-      state.kind === "diff" && state.target
-        ? statusInfo(state.target.file.statusKind)
-        : undefined;
-    const badge = status ? `<span class="badge">${escapeHtml(status.badge)}</span>` : "";
-    const body =
-      state.kind === "diff"
-        ? `<div class="diff">${renderPatchHtml(state.patch)}</div>`
-        : `<div class="message ${state.kind}">${escapeHtml(state.detail)}</div>`;
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    :root {
-      --wtr-editor-font-family: ${editorStyle.fontFamily};
-      --wtr-editor-font-size: ${editorStyle.fontSize}px;
-      --wtr-editor-font-weight: ${editorStyle.fontWeight};
-      --wtr-editor-line-height: ${editorStyle.lineHeight}px;
-      --wtr-editor-tab-size: ${editorStyle.tabSize};
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
-      font-family: var(--vscode-font-family);
-    }
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border);
-      background: var(--vscode-sideBar-background);
-    }
-    .title {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      min-width: 0;
-      font-weight: 600;
-      word-break: break-word;
-    }
-    .badge {
-      flex: 0 0 auto;
-      min-width: 1.4em;
-      padding: 0 4px;
-      border-radius: 3px;
-      color: var(--vscode-badge-foreground);
-      background: var(--vscode-badge-background);
-      text-align: center;
-      font-size: 11px;
-      line-height: 16px;
-    }
-    .detail {
-      margin-top: 3px;
-      color: var(--vscode-descriptionForeground);
-      font-size: 12px;
-      word-break: break-word;
-    }
-    .message {
-      padding: 12px 10px;
-      color: var(--vscode-descriptionForeground);
-      line-height: 1.5;
-    }
-    .message.error {
-      color: var(--vscode-errorForeground);
-    }
-    .diff {
-      padding: 6px 0 20px;
-      overflow-x: auto;
-      color: var(--vscode-editor-foreground);
-      background: var(--vscode-editor-background);
-      font-family: var(--vscode-editor-font-family, var(--wtr-editor-font-family));
-      font-size: var(--vscode-editor-font-size, var(--wtr-editor-font-size));
-      font-weight: var(--wtr-editor-font-weight);
-      line-height: var(--wtr-editor-line-height);
-    }
-    .line {
-      padding: 0 10px;
-      min-height: var(--wtr-editor-line-height);
-      white-space: pre;
-      tab-size: var(--wtr-editor-tab-size);
-    }
-    .line.header {
-      position: static;
-      border: 0;
-      color: var(--vscode-textLink-foreground);
-      background: var(--vscode-editor-background);
-    }
-    .line.file {
-      color: var(--vscode-descriptionForeground);
-      background: var(--vscode-editor-background);
-    }
-    .line.hunk {
-      color: var(--vscode-editorLineNumber-activeForeground);
-      background: var(--vscode-editor-selectionBackground);
-    }
-    .line.add {
-      background: var(--vscode-diffEditor-insertedLineBackground);
-    }
-    .line.del {
-      background: var(--vscode-diffEditor-removedLineBackground);
-    }
-    .line.context {
-      color: var(--vscode-editor-foreground);
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="title">${badge}<span>${escapeHtml(state.title)}</span></div>
-    <div class="detail">${escapeHtml(state.detail)}</div>
-  </div>
-  ${body}
-</body>
-</html>`;
-  }
-}
-
 class WorktreeReviewProvider {
   constructor(git, context) {
     this.git = git;
     this.context = context;
-    this.mode = context.workspaceState.get(MODE_KEY, "diff");
+    const configuration = vscode.workspace.getConfiguration("worktreeReview");
+    this.enabled = configuration.get("enabled", true);
+    const configuredLayout = configuration.get("diffLayout", "sideBySide");
+    this.diffLayout = DIFF_LAYOUTS[configuredLayout]
+      ? configuredLayout
+      : "sideBySide";
     this.baseRefs = new Map();
     this.repoCache = new Map();
     this.activeWorktrees = new Map();
@@ -649,10 +335,6 @@ class WorktreeReviewProvider {
 
   setDecorationProvider(provider) {
     this.decorationProvider = provider;
-  }
-
-  setDiffPanel(provider) {
-    this.diffPanel = provider;
   }
 
   setChangesProvider(provider) {
@@ -668,6 +350,7 @@ class WorktreeReviewProvider {
   }
 
   async initialize() {
+    await this.applyDiffLayout();
     const repos = await this.getRepositories();
     for (const repo of repos) {
       await this.selectCurrentWorktree(repo);
@@ -690,9 +373,7 @@ class WorktreeReviewProvider {
     }
 
     try {
-      if (node.kind === "mode") {
-        await this.selectMode(node);
-      } else if (node.kind === "worktree") {
+      if (node.kind === "worktree") {
         await this.selectWorktree(node);
       } else if (node.kind === "changedFile") {
         await this.openChangedFile(node);
@@ -730,13 +411,9 @@ class WorktreeReviewProvider {
 
       if (node.kind === "repo") {
         const worktrees = await this.getWorktrees(node);
-        const modeNodes = Object.keys(MODES).map(
-          (mode) => new ModeNode(this, node, mode, this.mode === mode)
-        );
-
         return worktrees.length > 0
-          ? [...modeNodes, ...worktrees]
-          : [...modeNodes, new MessageNode("No linked worktrees found.")];
+          ? worktrees
+          : [new MessageNode("No linked worktrees found.")];
       }
     } catch (error) {
       return [new MessageNode(formatError(error))];
@@ -771,7 +448,14 @@ class WorktreeReviewProvider {
         this.baseRefs.get(key) ||
         (await this.getDefaultBaseRef(root, folder.uri, currentRef));
       const activeWorktree = this.activeWorktrees.get(key);
-      const repo = new RepoNode(root, currentRef, baseRef, key, activeWorktree, this.mode);
+      const repo = new RepoNode(
+        root,
+        currentRef,
+        baseRef,
+        key,
+        activeWorktree,
+        this.diffLayout
+      );
       this.repoCache.set(key, repo);
       repos.push(repo);
     }
@@ -921,48 +605,47 @@ class WorktreeReviewProvider {
     return picked && picked.worktree;
   }
 
-  async selectMode(node) {
-    let mode = node && node.kind === "mode" ? node.mode : undefined;
-
-    if (!mode) {
-      const picked = await vscode.window.showQuickPick(
-        Object.entries(MODES).map(([value, info]) => ({
-          label: info.label,
-          description: info.description,
-          value,
-        })),
-        { placeHolder: "Select Worktree Review mode" }
-      );
-      mode = picked && picked.value;
-    }
-
-    if (!mode || !MODES[mode]) {
+  async setDiffLayout(layout) {
+    if (!DIFF_LAYOUTS[layout]) {
       return;
     }
 
-    this.mode = mode;
-    await this.context.workspaceState.update(MODE_KEY, mode);
-    if (mode === "off") {
-      await this.resetReviewState();
-    } else if (mode === "panel") {
-      await this.closeWorktreeReviewDiffs();
-      await this.focusDiffPanel();
-    }
+    this.diffLayout = layout;
+    await vscode.workspace
+      .getConfiguration("worktreeReview")
+      .update("diffLayout", layout, vscode.ConfigurationTarget.Global);
+    await this.applyDiffLayout();
     this._onDidChangeTreeData.fire();
-    this.decorationProvider && this.decorationProvider.refresh();
-    this.changesProvider && this.changesProvider.refresh();
     this.updateStatusBar();
   }
 
-  async resetReviewState() {
-    this.openingReview = false;
-    await this.closeWorktreeReviewDiffs();
-    if (this.diffPanel) {
-      await this.diffPanel.hide();
+  async applyDiffLayout() {
+    const sideBySide = this.diffLayout === "sideBySide";
+    const configuration = vscode.workspace.getConfiguration("diffEditor");
+    await configuration.update(
+      "renderSideBySide",
+      sideBySide,
+      vscode.ConfigurationTarget.Global
+    );
+    if (sideBySide) {
+      await configuration.update(
+        "useInlineViewWhenSpaceIsLimited",
+        false,
+        vscode.ConfigurationTarget.Global
+      );
     }
-    this.activeWorktrees.clear();
-    this.changeStates.clear();
-    this.changesProvider && this.changesProvider.refresh();
+  }
+
+  async toggleReview() {
+    this.enabled = !this.enabled;
+    await vscode.workspace
+      .getConfiguration("worktreeReview")
+      .update("enabled", this.enabled, vscode.ConfigurationTarget.Global);
+    this.decorationProvider && this.decorationProvider.refresh();
+    this.updateStatusBar();
+    vscode.window.showInformationMessage(
+      `Worktree Review automatic review ${this.enabled ? "enabled" : "disabled"}.`
+    );
   }
 
   async rebuildChangeState(worktree) {
@@ -1013,12 +696,23 @@ class WorktreeReviewProvider {
       return;
     }
 
-    this.baseRefs.set(repo.key, selected.label);
-    repo.baseRef = selected.label;
+    return this.setBaseRef(repo.repoRoot, selected.label);
+  }
+
+  async setBaseRef(repoRoot, baseRef) {
+    const repo = (await this.getRepositories()).find(
+      (candidate) => normalizeFsPath(candidate.repoRoot) === normalizeFsPath(repoRoot)
+    );
+    if (!repo) {
+      return undefined;
+    }
+
+    this.baseRefs.set(repo.key, baseRef);
+    repo.baseRef = baseRef;
 
     const active = this.activeWorktrees.get(repo.key);
     if (active) {
-      active.repo.baseRef = selected.label;
+      active.repo.baseRef = baseRef;
       await this.rebuildChangeState(active);
     }
 
@@ -1026,6 +720,7 @@ class WorktreeReviewProvider {
     this.decorationProvider && this.decorationProvider.refresh();
     this.changesProvider && this.changesProvider.refresh();
     this.updateStatusBar();
+    return { baseRef, repoRoot: repo.repoRoot };
   }
 
   async pickRepo() {
@@ -1081,7 +776,7 @@ class WorktreeReviewProvider {
   }
 
   provideExplorerDecoration(uri) {
-    if (uri.scheme !== "file" || this.mode === "off") {
+    if (uri.scheme !== "file" || !this.enabled) {
       return undefined;
     }
 
@@ -1108,7 +803,7 @@ class WorktreeReviewProvider {
   }
 
   async handleActiveEditor(editor) {
-    if (!editor || this.mode === "off" || this.openingReview) {
+    if (!editor || !this.enabled || this.openingReview) {
       return;
     }
 
@@ -1123,17 +818,6 @@ class WorktreeReviewProvider {
 
     const match = this.findChangeForUri(document.uri);
     if (!match) {
-      if (this.isUriInReviewRoots(document.uri)) {
-        if (this.mode === "panel") {
-          this.diffPanel && this.diffPanel.clear();
-        }
-      }
-
-      return;
-    }
-
-    if (this.mode === "panel") {
-      await this.openPanelForTarget(match, { reveal: false });
       return;
     }
 
@@ -1150,7 +834,7 @@ class WorktreeReviewProvider {
   }
 
   async handleOpenedDocument(document) {
-    if (this.mode !== "diff" || !document || document.uri.scheme !== "file") {
+    if (!this.enabled || !document || document.uri.scheme !== "file") {
       return;
     }
 
@@ -1238,33 +922,7 @@ class WorktreeReviewProvider {
   }
 
   async openReviewTarget(target, options = {}) {
-    if (this.mode === "panel") {
-      await this.openPanelForTarget(target, { reveal: true });
-      return;
-    }
-
-    if (this.mode === "preview") {
-      const opened = await this.openPreviewForFile(target.worktree, target.file);
-      if (opened) {
-        return;
-      }
-    }
-
     await this.openDiffForFile(target.worktree, target.file, options);
-  }
-
-  async openPanelForTarget(target, options = {}) {
-    if (!this.diffPanel) {
-      return;
-    }
-
-    await this.diffPanel.showTarget(target, options);
-  }
-
-  async focusDiffPanel() {
-    if (this.diffPanel) {
-      await this.diffPanel.focus();
-    }
   }
 
   async focusReview() {
@@ -1277,22 +935,6 @@ class WorktreeReviewProvider {
     if (!focusedChanges) {
       await executeCommandBestEffort(`${this.viewIds.worktrees}.focus`);
     }
-  }
-
-  async openPreviewForFile(worktree, file) {
-    if (file.statusKind === "D") {
-      await this.openDiffForFile(worktree, file);
-      return true;
-    }
-
-    const uri = this.getWorktreeFileUri(worktree, file.path);
-    if (!uri) {
-      await this.openDiffForFile(worktree, file);
-      return true;
-    }
-
-    await vscode.window.showTextDocument(uri, { preview: false });
-    return true;
   }
 
   async openDiffForFile(worktree, file, options = {}) {
@@ -1324,35 +966,6 @@ class WorktreeReviewProvider {
     return uriEquals(input.original, uri) || uriEquals(input.modified, uri);
   }
 
-  async closeWorktreeReviewDiffs() {
-    const tabGroups = vscode.window.tabGroups;
-    if (!tabGroups || typeof tabGroups.close !== "function") {
-      return;
-    }
-
-    const tabs = [];
-    for (const group of tabGroups.all) {
-      for (const tab of group.tabs) {
-        if (isWorktreeReviewDiffTab(tab)) {
-          tabs.push(tab);
-        }
-      }
-    }
-
-    if (tabs.length > 0) {
-      await tabGroups.close(tabs, true);
-    }
-  }
-
-  getWorktreeFileUri(worktree, relativePath) {
-    const filePath = path.join(worktree.path, ...relativePath.split("/"));
-    if (!fs.existsSync(filePath)) {
-      return undefined;
-    }
-
-    return vscode.Uri.file(filePath);
-  }
-
   findChangeForUri(uri) {
     for (const state of this.changeStates.values()) {
       const repoMatch = this.findChangeInState(state, state.repo.repoRoot, uri.fsPath);
@@ -1362,20 +975,6 @@ class WorktreeReviewProvider {
     }
 
     return undefined;
-  }
-
-  isUriInReviewRoots(uri) {
-    if (uri.scheme !== "file") {
-      return false;
-    }
-
-    for (const state of this.changeStates.values()) {
-      if (relativePathFromRoot(state.repo.repoRoot, uri.fsPath)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   findChangeInState(state, rootPath, fsPath) {
@@ -1443,30 +1042,30 @@ class WorktreeReviewProvider {
 
     const states = Array.from(this.changeStates.values());
     const firstState = states[0];
-    if (this.mode === "off") {
+    if (!this.enabled) {
       this.statusBar.text = "$(circle-slash) WTR: Off";
     } else if (firstState) {
-      this.statusBar.text = `$(git-branch) WTR: ${firstState.worktree.label} · ${MODES[this.mode].label}`;
+      this.statusBar.text = `$(git-branch) WTR: ${firstState.worktree.label} · ${DIFF_LAYOUTS[this.diffLayout].label}`;
     } else {
-      this.statusBar.text = `$(git-branch) WTR: Select worktree · ${MODES[this.mode].label}`;
+      this.statusBar.text = `$(git-branch) WTR: Select worktree · ${DIFF_LAYOUTS[this.diffLayout].label}`;
     }
 
     this.statusBar.tooltip =
-      "Worktree Review: select worktree or mode from the sidebar";
+      "Worktree Review: select a worktree or diff layout from the sidebar";
     this.statusBar.command = "worktreeReview.selectWorktree";
     this.statusBar.show();
   }
 }
 
 class RepoNode {
-  constructor(repoRoot, currentRef, baseRef, key, activeWorktree, mode) {
+  constructor(repoRoot, currentRef, baseRef, key, activeWorktree, diffLayout) {
     this.kind = "repo";
     this.repoRoot = repoRoot;
     this.currentRef = currentRef;
     this.baseRef = baseRef;
     this.key = key;
     this.activeWorktree = activeWorktree;
-    this.mode = mode;
+    this.diffLayout = diffLayout;
   }
 
   getTreeItem() {
@@ -1475,33 +1074,10 @@ class RepoNode {
       vscode.TreeItemCollapsibleState.Expanded
     );
     const target = this.activeWorktree ? this.activeWorktree.label : "none";
-    item.description = `base: ${this.baseRef} · target: ${target} · ${MODES[this.mode].label}`;
+    item.description = `base: ${this.baseRef} · target: ${target} · ${DIFF_LAYOUTS[this.diffLayout].label}`;
     item.tooltip = `${this.repoRoot}\nCurrent: ${this.currentRef}\nBase: ${this.baseRef}\nTarget: ${target}`;
     item.contextValue = "repo";
     item.iconPath = new vscode.ThemeIcon("repo");
-    return item;
-  }
-}
-
-class ModeNode {
-  constructor(provider, repo, mode, active) {
-    this.kind = "mode";
-    this.provider = provider;
-    this.repo = repo;
-    this.mode = mode;
-    this.active = active;
-  }
-
-  getTreeItem() {
-    const info = MODES[this.mode];
-    const item = new vscode.TreeItem(
-      `Mode: ${info.label}`,
-      vscode.TreeItemCollapsibleState.None
-    );
-    item.description = this.active ? "active" : undefined;
-    item.tooltip = info.description;
-    item.contextValue = "mode";
-    item.iconPath = new vscode.ThemeIcon(this.active ? "check" : info.icon);
     return item;
   }
 }
@@ -1593,6 +1169,11 @@ class ChangedFileNode {
     item.resourceUri = vscode.Uri.file(
       path.join(this.state.repo.repoRoot, ...this.file.path.split("/"))
     );
+    item.command = {
+      command: "worktreeReview.openChangedFile",
+      title: "Open Changed File Diff",
+      arguments: [this],
+    };
     return item;
   }
 }
@@ -1703,129 +1284,6 @@ function formatStats(stats) {
     .filter((key) => stats[key] > 0)
     .map((key) => `${key}${stats[key]}`)
     .join(" ");
-}
-
-function getEditorStyle() {
-  const config = vscode.workspace.getConfiguration("editor");
-  const fontSize = numberSetting(config.get("fontSize"), 14);
-  const configuredLineHeight = numberSetting(config.get("lineHeight"), 0);
-  const lineHeight =
-    configuredLineHeight > 0 ? configuredLineHeight : Math.round(fontSize * 1.5);
-
-  return {
-    fontFamily: cssFontFamily(config.get("fontFamily", "monospace")),
-    fontSize,
-    fontWeight: cssIdentifier(config.get("fontWeight", "normal")),
-    lineHeight,
-    tabSize: numberSetting(config.get("tabSize"), 4),
-  };
-}
-
-function numberSetting(value, fallback) {
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number : fallback;
-}
-
-function cssFontFamily(value) {
-  return String(value || "monospace")
-    .split(",")
-    .map((part) => {
-      const trimmed = part.trim();
-      if (!trimmed) {
-        return "monospace";
-      }
-
-      if (
-        (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
-        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        /^[a-zA-Z-]+$/.test(trimmed)
-      ) {
-        return trimmed;
-      }
-
-      return `"${trimmed.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-    })
-    .join(", ");
-}
-
-function cssIdentifier(value) {
-  const text = String(value || "normal").trim();
-  return /^[a-zA-Z0-9 _.-]+$/.test(text) ? text : "normal";
-}
-
-async function makeSyntheticPatch(kind, rootPath, filePath) {
-  const absolutePath = path.join(rootPath, ...filePath.split("/"));
-  const content = await fs.promises.readFile(absolutePath, "utf8");
-  return makeSyntheticPatchFromContent(kind, filePath, content);
-}
-
-function makeSyntheticPatchFromContent(kind, filePath, content) {
-  const lines = splitTextLines(content);
-  const lineCount = Math.max(lines.length, 1);
-  const header =
-    kind === "deleted"
-      ? [
-          `diff --git a/${filePath} b/${filePath}`,
-          `deleted file ${filePath}`,
-          `--- a/${filePath}`,
-          "+++ /dev/null",
-          `@@ -1,${lineCount} +0,0 @@`,
-        ]
-      : [
-          `diff --git a/${filePath} b/${filePath}`,
-          `new file ${filePath}`,
-          "--- /dev/null",
-          `+++ b/${filePath}`,
-          `@@ -0,0 +1,${lineCount} @@`,
-        ];
-  const prefix = kind === "deleted" ? "-" : "+";
-  return [...header, ...lines.map((line) => `${prefix}${line}`)].join("\n");
-}
-
-function splitTextLines(content) {
-  const normalized = content.replace(/\r\n/g, "\n");
-  if (!normalized) {
-    return [];
-  }
-
-  return normalized.endsWith("\n")
-    ? normalized.slice(0, -1).split("\n")
-    : normalized.split("\n");
-}
-
-function renderPatchHtml(patch) {
-  return String(patch)
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((line) => `<div class="line ${patchLineClass(line)}">${escapeHtml(line || " ")}</div>`)
-    .join("");
-}
-
-function patchLineClass(line) {
-  if (line.startsWith("diff --git") || line.startsWith("index ")) {
-    return "header";
-  }
-  if (line.startsWith("--- ") || line.startsWith("+++ ")) {
-    return "file";
-  }
-  if (line.startsWith("@@")) {
-    return "hunk";
-  }
-  if (line.startsWith("+")) {
-    return "add";
-  }
-  if (line.startsWith("-")) {
-    return "del";
-  }
-  return "context";
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function isWorktreeReviewDiffTab(tab) {

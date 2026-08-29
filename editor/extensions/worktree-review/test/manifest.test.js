@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("assert/strict");
+const fs = require("fs");
+const path = require("path");
 const test = require("node:test");
 
 const manifest = require("../package.json");
@@ -17,6 +19,17 @@ function contributedViewIds() {
   return Object.values(manifest.contributes.views)
     .flat()
     .map((view) => view.id);
+}
+
+function visiblePaletteCommands() {
+  const hidden = new Set(
+    manifest.contributes.menus.commandPalette
+      .filter((item) => item.when === "false")
+      .map((item) => item.command)
+  );
+  return manifest.contributes.commands
+    .map((command) => command.command)
+    .filter((command) => !hidden.has(command));
 }
 
 test("review sidebar contributes the runtime view ids", () => {
@@ -80,4 +93,83 @@ test("branch changes contributes configuration, commands, and SCM title actions"
   assert.equal(commands.has("worktreeReview.toggleBranchChanges"), true);
   assert.equal(scmTitleCommands.has("worktreeReview.refreshBranchChanges"), true);
   assert.equal(scmTitleCommands.has("worktreeReview.selectBranchBaseRef"), true);
+});
+
+test("command palette exposes only the four primary review controls", () => {
+  assert.deepEqual(visiblePaletteCommands(), [
+    "worktreeReview.selectBaseRef",
+    "worktreeReview.useSideBySideDiff",
+    "worktreeReview.useInlineDiff",
+    "worktreeReview.toggleReview",
+  ]);
+});
+
+test("review layout settings have stable defaults", () => {
+  const properties = manifest.contributes.configuration.properties;
+
+  assert.equal(properties["worktreeReview.enabled"].default, true);
+  assert.equal(properties["worktreeReview.diffLayout"].default, "sideBySide");
+  assert.deepEqual(properties["worktreeReview.diffLayout"].enum, [
+    "sideBySide",
+    "inline",
+  ]);
+});
+
+test("both base-branch pickers synchronize the sidebar and SCM views", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /branchScm\.selectBaseRef\(sourceControl\)[\s\S]*?provider\.setBaseRef\(selection\.repoRoot, selection\.baseRef\)/
+  );
+  assert.match(
+    source,
+    /provider\.selectBaseRef\(node\)[\s\S]*?branchScm\.setBaseRef\(selection\.repoRoot, selection\.baseRef\)/
+  );
+});
+
+test("obsolete mode and side-panel contributions are removed", () => {
+  const manifestText = JSON.stringify(manifest);
+
+  assert.equal(manifestText.includes("worktreeReview.selectMode"), false);
+  assert.equal(manifestText.includes("worktreeReview.focusDiffPanel"), false);
+  assert.equal(manifestText.includes("worktreeReview.secondaryDiff"), false);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      manifest.contributes.viewsContainers,
+      "secondarySidebar"
+    ),
+    false
+  );
+});
+
+test("changed-file rows open diffs directly without a selection listener", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /item\.command\s*=\s*\{\s*command:\s*"worktreeReview\.openChangedFile"/
+  );
+  assert.equal(
+    source.includes("changesRegistration.treeView.onDidChangeSelection"),
+    false
+  );
+});
+
+test("deleted files use an empty right side in native diffs", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /file\.statusKind === "D"\s*\? makeEmptyUri\([\s\S]*?\)\s*:\s*makeWorktreeFileUri/
+  );
 });

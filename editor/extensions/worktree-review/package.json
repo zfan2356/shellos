@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review cumulative branch changes and Git worktree branches without rewriting repository state.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -36,18 +36,18 @@
     "onStartupFinished",
     "onView:worktreeReview.sidebar.changes",
     "onView:worktreeReview.sidebar.worktrees",
-    "onView:worktreeReview.secondaryDiff",
     "onCommand:worktreeReview.refresh",
     "onCommand:worktreeReview.refreshBranchChanges",
     "onCommand:worktreeReview.selectBranchBaseRef",
     "onCommand:worktreeReview.toggleBranchChanges",
     "onCommand:worktreeReview.selectBaseRef",
     "onCommand:worktreeReview.selectWorktree",
-    "onCommand:worktreeReview.selectMode",
+    "onCommand:worktreeReview.useSideBySideDiff",
+    "onCommand:worktreeReview.useInlineDiff",
+    "onCommand:worktreeReview.toggleReview",
     "onCommand:worktreeReview.openCurrentFileReview",
     "onCommand:worktreeReview.openChangedFile",
     "onCommand:worktreeReview.focusReview",
-    "onCommand:worktreeReview.focusDiffPanel",
     "onCommand:worktreeReview.copyWorktreePath"
   ],
   "contributes": {
@@ -58,6 +58,24 @@
           "type": "string",
           "default": "git",
           "description": "Path to the Git executable."
+        },
+        "worktreeReview.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open base-versus-worktree diffs from Explorer and decorate changed files."
+        },
+        "worktreeReview.diffLayout": {
+          "type": "string",
+          "enum": [
+            "sideBySide",
+            "inline"
+          ],
+          "enumDescriptions": [
+            "Show base and worktree in separate columns.",
+            "Show additions and deletions in one column."
+          ],
+          "default": "sideBySide",
+          "description": "Layout used by VS Code diff editors opened from Worktree Review."
         },
         "worktreeReview.includeCurrentWorktree": {
           "type": "boolean",
@@ -104,7 +122,7 @@
       },
       {
         "command": "worktreeReview.selectBaseRef",
-        "title": "Select Base Ref",
+        "title": "Select Base Branch",
         "category": "Worktree Review",
         "icon": "$(git-branch)"
       },
@@ -115,10 +133,22 @@
         "icon": "$(git-branch)"
       },
       {
-        "command": "worktreeReview.selectMode",
-        "title": "Select Mode",
+        "command": "worktreeReview.useSideBySideDiff",
+        "title": "Use Side-by-Side Diff",
         "category": "Worktree Review",
-        "icon": "$(settings)"
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "worktreeReview.useInlineDiff",
+        "title": "Use Inline Diff",
+        "category": "Worktree Review",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "worktreeReview.toggleReview",
+        "title": "Toggle Automatic Review",
+        "category": "Worktree Review",
+        "icon": "$(power)"
       },
       {
         "command": "worktreeReview.openCurrentFileReview",
@@ -139,12 +169,6 @@
         "icon": "$(git-branch)"
       },
       {
-        "command": "worktreeReview.focusDiffPanel",
-        "title": "Focus Diff Panel",
-        "category": "Worktree Review",
-        "icon": "$(layout-sidebar-right)"
-      },
-      {
         "command": "worktreeReview.copyWorktreePath",
         "title": "Copy Worktree Path",
         "category": "Worktree Review",
@@ -158,14 +182,6 @@
           "title": "Worktree Review",
           "icon": "resources/worktree-review.svg"
         }
-      ],
-      "secondarySidebar": [
-        {
-          "id": "worktreeReviewSecondaryDiff",
-          "title": "Worktree Review Diff",
-          "icon": "resources/worktree-review.svg",
-          "when": "!worktreeReview.doesNotSupportSecondarySidebar"
-        }
       ]
     },
     "views": {
@@ -177,14 +193,6 @@
         {
           "id": "worktreeReview.sidebar.worktrees",
           "name": "Worktrees"
-        }
-      ],
-      "worktreeReviewSecondaryDiff": [
-        {
-          "id": "worktreeReview.secondaryDiff",
-          "type": "webview",
-          "name": "Diff",
-          "when": "!worktreeReview.doesNotSupportSecondarySidebar"
         }
       ]
     },
@@ -223,19 +231,19 @@
           "group": "navigation"
         },
         {
-          "command": "worktreeReview.selectMode",
+          "command": "worktreeReview.useSideBySideDiff",
           "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
-          "command": "worktreeReview.openChangedFile",
+          "command": "worktreeReview.useInlineDiff",
           "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation"
+          "group": "navigation@4"
         },
         {
-          "command": "worktreeReview.focusDiffPanel",
+          "command": "worktreeReview.toggleReview",
           "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation"
+          "group": "navigation@5"
         }
       ],
       "editor/title": [
@@ -267,6 +275,44 @@
           "command": "worktreeReview.openCurrentFileReview",
           "when": "resourceScheme == file",
           "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "worktreeReview.refresh",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.refreshBranchChanges",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.selectBranchBaseRef",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.toggleBranchChanges",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.selectWorktree",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.openCurrentFileReview",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.openChangedFile",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.focusReview",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.copyWorktreePath",
+          "when": "false"
         }
       ]
     }
