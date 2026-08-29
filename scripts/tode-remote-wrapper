@@ -1,6 +1,7 @@
 #!/bin/sh
 # Remote-side `tode`: run code-server remotely and render it in an overlay of
-# the current local kitty window. Install with deploy-remote-tode.sh.
+# the current local kitty window. Installed only by the complete ShellOS
+# reinstall entrypoint.
 set -eu
 
 CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Build and install shellos' bundled Worktree Review extension locally or remotely.
+# Internal full-reinstall helper: build and install the bundled extension.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SSH_HOST="${1:-}"
+
+if [[ "${SHELLOS_FULL_REINSTALL:-}" != 1 ]]; then
+  echo "do not deploy selectively; run $REPO/scripts/reinstall-shellos.sh" >&2
+  exit 1
+fi
 
 for command in node npx; do
   command -v "$command" >/dev/null 2>&1 || {

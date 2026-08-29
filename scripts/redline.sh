@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-commit content check. Patterns that must never appear live in
-# .redline-local (untracked; recreate from local notes if missing).
+# .redline-local (untracked because it may contain private identifiers).
 set -uo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0

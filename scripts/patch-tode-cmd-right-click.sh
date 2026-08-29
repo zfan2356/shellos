@@ -2,6 +2,12 @@
 # Bind Cmd+right-click (Ctrl+right-click on Linux) to Go Back in Tode.
 set -euo pipefail
 
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ "${SHELLOS_FULL_REINSTALL:-}" != 1 ]]; then
+  echo "do not patch an installed artifact directly; run $REPO/scripts/reinstall-shellos.sh" >&2
+  exit 1
+fi
+
 MODE="${1:-}"
 if [[ -n "$MODE" && "$MODE" != "--check" && "$MODE" != "--reapply" ]]; then
   echo "usage: $0 [--check|--reapply]" >&2

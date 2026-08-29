@@ -20,14 +20,19 @@
 # terminal on wake. Zero frames while unfocused, one clean frame on return.
 #
 # Idempotent; keeps a .orig backup and migrates any older patch version by
-# restoring from it first. Re-run after every tode upgrade (upgrades
-# replace the install dir wholesale).
+# restoring from it first. It is only run by the complete ShellOS reinstall;
+# never apply it directly to a live installation.
 set -euo pipefail
 
 MODE=""
 if [[ "${1:-}" == "--check" ]]; then
   MODE="--check"
   shift
+fi
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ "${SHELLOS_FULL_REINSTALL:-}" != 1 ]]; then
+  echo "do not patch an installed artifact directly; run $REPO/scripts/reinstall-shellos.sh" >&2
+  exit 1
 fi
 TARGET="${1:-$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js}"
 

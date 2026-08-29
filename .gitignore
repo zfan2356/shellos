@@ -1,5 +1,3 @@
 # local-only: private host aliases, never commit
 kitty/ssh.conf
 .redline-local
-editor/*.local.json
-editor/*.local.txt

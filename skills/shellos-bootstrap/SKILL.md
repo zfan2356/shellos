@@ -1,163 +1,99 @@
 ---
 name: shellos-bootstrap
-description: Restore the shellos terminal environment (kitty + terminal-code/tode + Python tooling) on a fresh macOS machine from the shellos repo. Use when asked to bootstrap, restore, or set up the terminal environment, or after a tode upgrade wiped customizations.
+description: Install or restore the complete ShellOS kitty and terminal-code/tode environment from a clean, published shellos main checkout, including tracked patches, extensions, skills, and the paired remote host. Use for a fresh machine, recovery, reinstall, or post-upgrade restoration.
 ---
 
-# shellos bootstrap
+# ShellOS bootstrap
 
-Restore the full terminal workspace from this repo. `$REPO` below means the
-root of the shellos checkout (the directory containing this skill).
-Run steps in order; each has a verification. Ask before overwriting any
-existing config that differs from the repo — the machine may have newer
-local edits (offer to run `scripts/sync.sh` instead).
+Bootstrap is not a collection of manual installation steps. The committed
+repository and its one complete reinstall script define the environment.
 
-## 0. Network reality check
+## Source and safety requirements
 
-- `*.workers.dev` (tode's official download CDN) is blocked in this network.
-  Always use GitHub releases instead — same assets, verify sha256 matches the
-  official install script if in doubt.
-- GitHub and open-vsx.org are reachable. The VS Code marketplace is NOT usable
-  from code-server (no gallery configured), so extensions come from Open VSX
-  vsix downloads or from a local `tode --import` of an existing VS Code.
+- Use the formal checkout at `~/wxg/shellos` on branch `main`.
+- Do not edit installed files or apply a command from notes as a patch.
+- Do not call helper scripts individually or install only the affected
+  component.
+- All patches and platform workarounds must already be committed and pushed.
+- Only SSH keys, private host aliases, the generated remote alias file, and
+  other true secrets may remain outside the repository.
 
-## 1. kitty
+If a new fix is needed, stop the bootstrap and follow the repository-change
+workflow in `skills/shellos/SKILL.md`: independent checkout, validation,
+commit, push, formal fast-forward pull, and then restart this full reinstall.
 
-```bash
-brew install --cask kitty
-brew install --cask font-maple-mono-nf-cn   # kitty.conf uses "Maple Mono NF CN"
-# fallback if the cask is missing: download from github.com/subframe7536/maple-font releases
-mkdir -p ~/.config/kitty/tode
-cp $REPO/kitty/kitty.conf $REPO/kitty/current-theme.conf \
-   $REPO/kitty/macos-launch-services-cmdline ~/.config/kitty/
-cp $REPO/kitty/tode/keybinds.kitty.conf ~/.config/kitty/tode/
-```
+## Prerequisites
 
-`~/.config/kitty/ssh.conf` (kitten-ssh per-host settings) is local-only and
-NOT in this repo — it holds private host aliases. Recreate it by hand; see
-`docs/remote-server.md` for what belongs in it.
+The local host is macOS arm64 with Homebrew, Git, curl, Node/npx, and Python 3.
+The paired host is reachable by an SSH alias and supports Linux x64
+or arm64. Keep private connection data in the user's SSH config and
+`~/.config/kitty/ssh.conf`, never in the public repository.
 
-Verify: launch kitty; font renders, Catppuccin theme active, `cmd+d` splits
-vertically. Reload a running kitty with `pkill -USR1 -x kitty`.
+The official tode CDN may be unavailable. The repository installer downloads
+the GitHub release matching the committed `third-party/terminal-code` tag and
+checks it against the matching versioned release manifest. Kitty must match
+the committed `third-party/kitty` tag.
 
-## 2. terminal-code (tode)
+## Complete install
 
-Install from GitHub releases of `zenbu-labs/terminal-code` (NOT the official
-installer — it pulls from workers.dev, see step 0). Pick the latest release
-asset for macOS arm64, install so that `tode` is on PATH (`~/.local/bin/tode`).
-
-Then restore config. Editor settings/keybindings are SYMLINKED into the
-repo checkout (shared between tode and Cursor — the repo must stay at a
-stable path):
+For a fresh checkout:
 
 ```bash
-mkdir -p ~/.local/share/tode/vscode/user-data/User
-$REPO/scripts/link.sh
-cp $REPO/tode/shortcuts.json ~/.local/share/tode/
-cp $REPO/tode/theme/palette.json $REPO/tode/theme/live-theme.json \
-   $REPO/tode/theme/inject.css ~/.local/share/tode/
+git clone --recurse-submodules https://github.com/zfan2356/shellos.git ~/wxg/shellos
+cd ~/wxg/shellos
 ```
 
-Notes on what these files are:
-- `shortcuts.json` is the decision record from `tode --shortcut-setup`
-  (56 kitty/editor conflicts, resolved: pane switching only `alt+cmd+arrows`,
-  kitty tabs `cmd+t`/`cmd+w`, editor tabs `ctrl+t`/`ctrl+w`, tab navigation
-  `ctrl+shift+←→` + `alt+1-9`, `cmd+d` = editor duplicate-line,
-  kitty vsplit moved to `ctrl+shift+d`, `cmd+=/-/0` = browser page zoom,
-  kitty font zoom on default `ctrl+shift+=/-`). The generated kitty side of
-  this contract is `kitty/tode/keybinds.kitty.conf`, restored in step 1 —
-  restoring both files IS the shortcut setup; do not rerun `--shortcut-setup`.
-- `settings.json` already contains the Python contract (step 3 explains why):
-  `python.languageServer: "None"`, `python.defaultInterpreterPath:
-  "${workspaceFolder}/.venv/bin/python"` (auto-selects a project .venv when
-  present), `python-envs.defaultEnvManager: ms-python.python:venv`, and
-  `basedpyright.analysis.typeCheckingMode: "off"` (lint belongs to ruff;
-  the language server is only for navigation).
-
-Apply the committed Tode install patches. The script refuses to run unless the
-ShellOS checkout is clean and `HEAD` exactly matches `origin/main`, so pull the
-published revision before this step:
+For an existing formal checkout, first ensure it is on clean `main`. Then run:
 
 ```bash
-git -C "$REPO" pull --ff-only origin main
-$REPO/scripts/apply-tode-patches.sh
+./scripts/reinstall-shellos.sh <ssh-alias> [port]
 ```
 
-This disables App Nap on macOS, stops terminal-browser painting while the pane
-is unfocused, and installs Cmd+right-click (Ctrl+right-click on Linux) Go Back.
-The patch scripts keep pristine `.orig` backups and are idempotent. Tode
-upgrades replace the install directory, so repeat this committed-pull-deploy
-sequence after every upgrade. Then run `tode --shutdown` and reopen Tode.
+The script itself performs `git pull --ff-only origin main`, verifies exact
+agreement with `origin/main`, initializes committed submodule pins, and refuses
+a dirty or divergent checkout.
 
-## 3. Extensions
+It then completely reinstalls the ShellOS-managed local environment:
 
-`$REPO/editor/extensions.tode.txt` is the exact inventory. Two supported
-sources can provide extension bytes, but neither source changes the inventory:
+- pinned kitty and the configured font;
+- pinned tode from its checked release;
+- canonical kitty, tode, Cursor, shortcut, and theme files as copies;
+- the tracked renderer-freeze and Cmd/Ctrl-right-click patches plus macOS App Nap setting;
+- the committed extension inventory and bundled Worktree Review extension;
+- the `shellos` and `shellos-bootstrap` skills from the formal checkout;
+- the remote launcher helper.
 
-**When a VS Code / Cursor with these extensions exists locally:**
-`tode --import` can copy extension files quickly, but it is not a configuration
-restore. It also imports unlisted extensions and REPLACES the User
-settings/keybindings symlinks with real files. After using it, re-run
-`$REPO/scripts/link.sh`, uninstall every extension not listed in
-`editor/extensions.tode.txt` (except tode's own `tode.tode-bridge` and
-`tode.tode-theme`), and install every missing listed extension.
+The same command always completely reinstalls the paired remote's pinned tode,
+tracked renderer patch, generated Linux editor configuration, exact extension
+inventory, Worktree Review, and remote wrapper. The installer refuses to run
+without the SSH alias so a local-only deployment cannot be mistaken for a
+complete ShellOS reinstall.
 
-**From Open VSX (fresh machine):** for each ID in extensions.txt, try
-`https://open-vsx.org/api/<publisher>/<name>` — if present, download the vsix
-and install:
+## Verify
+
+After the command completes, verify:
 
 ```bash
-CS=~/.local/share/tode/code-server/*/bin/code-server
-$CS --extensions-dir ~/.local/share/tode/vscode/extensions \
-    --user-data-dir ~/.local/share/tode/vscode/user-data \
-    --install-extension <file>.vsix
+git status --short
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+tode --version
+kitty --version
 ```
 
-Marketplace-only extensions (copilot etc.) cannot be fetched this
-way. Fetch their official VSIX from the vendor marketplace when available;
-otherwise report the missing inventory item.
+The versions must match the exact tags checked out in
+`third-party/terminal-code` and `third-party/kitty`. The complete installer
+also verifies both tracked patch markers, App Nap setting, local and remote
+Worktree Review installation, and the remote tode version.
 
-**Python — non-negotiable pair:**
-- `detachhead.basedpyright` MUST be installed (from Open VSX). It is what
-  provides Python go-to-definition/completion.
-- `ms-python.vscode-pylance` MUST NOT be installed: tode ships OSS
-  code-server, Pylance's license check makes its language server silently
-  refuse to start (extension "activates", server log stays 0 bytes, no
-  navigation, and it conflicts with basedpyright). If an import brought it
-  in: `$CS ... --uninstall-extension ms-python.vscode-pylance`.
-
-## 4. Per-project Python (mimikyu/mmq checkouts)
-
-Each checkout/worktree gets its own uv `.venv` + `pyrightconfig.json`
-(venv + extraPaths + `typeCheckingMode: "off"`). This is a separate skill
-(`mmq-python-env`) — apply it per repo, not here. The global settings from
-step 2 make the editor auto-select `.venv/bin/python` wherever one exists.
-
-## 5. Verify
-
-- `tode` opens a project inside kitty; theme and keybindings feel right.
-- Open a `.py` file in a project with `.venv`: status bar shows the venv
-  interpreter without manual selection; go-to-definition works
-  (basedpyright), no Pylance in the extension list.
-- `pkill -USR1 -x kitty` applied the kitty side; `cmd+d` duplicates a line
-  in the editor, `ctrl+shift+d` splits kitty, `cmd+t`/`cmd+w` manage kitty
-  tabs, and `ctrl+t`/`ctrl+w` manage editor tabs.
-
-## Remote dev server
-
-The local machine pairs tightly with a remote dev server (tode runs there
-too; kitty connects via `kitten ssh`). The generic pairing setup is in
-`$REPO/docs/remote-server.md`. Machine-specific patches and host details are
-deliberately NOT in this repo — they live in the owner's local notes; ask
-before touching the remote side. Config restored by this skill lives in the
-data dir and survives tode upgrades; any remote binary patches do not.
-
-After local setup, deploy the generic remote wrapper and a generated Linux
-version of the shared editor configuration:
+Test the remote UI from a kitty-managed connection:
 
 ```bash
-$REPO/scripts/deploy-remote-tode.sh <ssh-alias> [port]
+kitten ssh <ssh-alias>
+tode <project-path>
 ```
 
-The local connection must use `kitten ssh <ssh-alias>`, and the alias must
-match the `hostname` pattern in local-only `kitty/ssh.conf`. Verify remotely
-that `KITTY_LISTEN_ON` is non-empty before testing `tode .`.
+`KITTY_LISTEN_ON` must be present remotely. Plain `ssh` cannot provide the
+forwarded kitty control channel needed for the local overlay. Use
+`View: Show Worktree Review` after the workspace opens; Tode `v0.2.0` does not
+forward a trailing `--review` through its native SSH transport. See
+`docs/remote-server.md`.

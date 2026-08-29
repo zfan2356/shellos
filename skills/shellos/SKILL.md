@@ -1,137 +1,89 @@
 ---
 name: shellos
-description: Manage the shellos repo (github.com/zfan2356/shellos) — sync local kitty/tode config changes, extension changes, and version bumps back to GitHub. Use after changing any terminal/editor config, installing or removing tode extensions, upgrading kitty or tode, or when asked to "sync shellos".
+description: Maintain github.com/zfan2356/shellos with a strict repository-first, commit-push-pull, full-reinstall workflow for kitty, tode, tracked patches, extensions, skills, and a paired remote host. Use after any ShellOS change, patch, configuration edit, version bump, or request to sync, update, repair, or reinstall ShellOS.
 ---
 
-# shellos — config sync to GitHub
+# ShellOS maintenance
 
-Local checkout: `~/wxg/shellos` (remote `git@github.com:zfan2356/shellos.git`,
-branch `main`, push over SSH). The repo is the source of truth for the
-terminal environment; this skill pushes local reality INTO it. The reverse
-direction (repo → fresh machine) is `skills/shellos-bootstrap/SKILL.md`
-inside the repo.
+The formal checkout is `~/wxg/shellos`, branch `main`. It is the sole source of
+truth for everything ShellOS manages. A local or remote installation is only a
+generated deployment of a committed repository revision.
 
-## The repo is the standard
+## Non-negotiable policy
 
-Everything shellos manages — kitty config, editor config, the remote tode
-wrapper, deploy scripts — has exactly one canonical form: the one in this
-repo. Whenever shellos is being updated, or any local or remote state that
-shellos manages is being changed, conform to the repo:
+- Never edit an installed file, application bundle, `~/.config` output,
+  `~/.local` output, or remote artifact to implement or test a fix.
+- Never keep a patch, command sequence, workaround, configuration variant, or
+  behavior change in local notes or on one machine. Add it to this repository.
+- Never deploy from an uncommitted checkout and never selectively run an
+  internal installer or patch script.
+- Every repository change, including documentation and skill changes, is
+  followed by a complete reinstall of the local machine and paired remote.
+- The only files outside the repository are secrets and connection identity:
+  SSH keys, private aliases in `~/.config/kitty/ssh.conf`, the generated
+  `~/.config/shellos/remote-tode.env`, and `.redline-local` secret patterns.
+  They may not contain patches or alternate behavior.
 
-- Deploy from the repo with its scripts (`link.sh`, `sync.sh`,
-  `deploy-remote-tode.sh`); never hand-copy files or install a forked
-  variant on a machine.
-- If a machine cannot run the repo version (a tool too old, a missing
-  dependency), fix the blocker — upgrade the tool — and then deploy the
-  repo version. Do not leave an ad-hoc downgrade or an older copy in place
-  as a workaround; that is drift, not a fix.
-- If the repo itself is wrong, change the repo first, then redeploy to
-  every machine it applies to.
-- Machine-local divergence is allowed only for the explicitly local-only
-  files: kitty `ssh.conf`, `.redline-local`, the remote
-  `~/.config/shellos/remote-tode.env`, and generated runtime state. Installed
-  binaries may differ only as the output of committed ShellOS patch scripts.
-- Live-config edits (shortcuts, theme, editor settings) are folded back via
-  the sanctioned flows below (`sync.sh` snapshot or the symlinks) in the
-  same session — the working tree should never silently disagree with
-  reality.
+## Required workflow
 
-## Mandatory repo-first order
+1. Inspect the formal checkout, but create an independent clone or worktree for
+   all modifications. Do not modify `~/wxg/shellos` before publication.
+2. Make every required source, patch, config, documentation, submodule-pin, and
+   test change in that independent checkout.
+3. Validate there. At minimum run relevant tests, shell syntax checks, and:
 
-Every patch, hook, wrapper, config change, and installation customization must
-follow this order without exception:
-
-1. Implement it in a clean ShellOS checkout. Never start by editing
-   `~/.local/lib/tode`, `~/.config/kitty`, a remote installation, or another
-   generated/runtime path.
-2. Test patch logic only against disposable copies before publication.
-3. Run redline and relevant static checks, then commit and push `main`.
-4. Use a fresh checkout or `git pull --ff-only` so deployment runs from the
-   exact published commit.
-5. Apply or reinstall only through committed repo scripts, then verify the
-   installed marker/hash and the target behavior.
-
-Never deploy an untracked script, an uncommitted edit, or a file copied from a
-private working directory. If a useful change already exists only in runtime
-state, treat it as evidence: reimplement it in the repo first, publish it, pull
-it back, and only then replace the runtime state. `scripts/assert-repo-first.sh`
-enforces the clean/pushed/pulled preconditions for Tode patch deployment.
-
-## How config flows
-
-- **Editor config is symlinked, not copied**: `editor/settings.json` is the
-  live settings file of BOTH tode and Cursor (their User-dir settings.json
-  are symlinks into this repo; per-target keybindings likewise). Any change
-  made in either editor lands in the repo working tree immediately.
-  `scripts/link.sh` (re)creates the symlinks if an editor replaced one with
-  a real file.
-- **kitty / tode shortcuts / tode theme** are machine-authoritative: run
-  `scripts/sync.sh` to snapshot them into the repo.
-- **Extension lists** (`editor/extensions.<target>.txt`) are maintained by
-  hand: update them in the same commit as an install/uninstall. Internal
-  extensions belong in the untracked `editor/extensions.<target>.local.txt`.
-- **Remote editor config is generated, not independently edited**:
-  `scripts/deploy-remote-tode.sh <ssh-alias>` copies the canonical tode
-  keybindings and renders shared settings with only Linux shell/Codex
-  overrides. The remote wrapper source is `scripts/tode-remote-wrapper`.
-
-## Commit workflow
-
-1. `git diff` — editor edits are already in the working tree; run
-   `scripts/sync.sh` first if kitty/shortcuts/theme changed.
-2. **Red-line check, every time** (the repo is PUBLIC and editors AUTO-WRITE
-   keys into the symlinked settings — e.g. Remote-SSH writes host-platform
-   maps with internal hostnames):
    ```bash
    ./scripts/redline.sh
    ```
-   Must print `redline: clean`. On a hit in `editor/settings.json`, DELETE
-   the offending key before committing (Remote-SSH re-asks the platform on
-   next connect; that is acceptable). The forbidden-pattern list lives in
-   `.redline-local` (untracked on purpose — the list itself is sensitive;
-   recreate from local Claude memory if missing).
-3. Commit directly on `main` with a message saying WHAT changed and WHY, then
-   push `main`. Do not create a pull request unless the user explicitly asks
-   for one. If work was prepared on another branch, update local `main` with a
-   fast-forward or cherry-pick as appropriate, push `main`, and close any
-   superseded draft pull request.
 
-## When kitty or tode is upgraded
+   It must report `redline: clean`. `.redline-local` is private because its
+   patterns may reveal secrets; provide it securely when available.
+4. Commit on `main` with an English conventional commit message and push
+   `origin main`. Do not create a pull request unless the user asks.
+5. In the formal checkout, accept the published state only through:
 
-Bump the matching submodule pin so the repo tracks the version in use:
+   ```bash
+   git pull --ff-only origin main
+   ```
 
-```bash
-cd ~/wxg/shellos/third-party/kitty        && git fetch --tags origin && git checkout v<new>
-cd ~/wxg/shellos/third-party/terminal-code && git fetch --tags origin && git checkout v<new>
-cd ~/wxg/shellos && git add third-party && git commit -m "Pin kitty vX / tode vY"
-```
+6. From that clean, pulled checkout run the only supported deployment command:
 
-Versions in use: `kitty --version`, `tode --version`. After a tode upgrade
-also re-check that user-data config survived (it should — upgrades replace
-the install dir, not the data dir), pull `main`, run
-`scripts/apply-tode-patches.sh`, and then run the sync workflow.
+   ```bash
+   ./scripts/reinstall-shellos.sh <ssh-alias> [port]
+   ```
 
-## When knowledge changes
+   When a paired remote exists, omitting it is not a complete deployment.
+7. Verify that formal `HEAD` equals `origin/main`, the worktree is clean, local
+   and remote versions match the committed submodule pins, every tracked patch
+   is present, and the expected extension/skill inventory is installed.
 
-If a new pitfall or procedure is discovered (install sources, extension
-quirks, shortcut regeneration, …), fold it into
-`skills/shellos-bootstrap/SKILL.md` or `docs/` in the same commit as the
-config change — the bootstrap skill is only useful if it stays current.
+If any step fails, fix the repository in the independent checkout and repeat
+the entire commit → push → pull → full-reinstall sequence. Do not repair the
+installed result in place.
 
-## Layout reminders
+## Configuration and version rules
 
-- `editor/settings.json` = live shared settings of tode AND Cursor (symlink
-  targets: `~/.local/share/tode/vscode/user-data/User/settings.json`,
-  `~/Library/Application Support/Cursor/User/settings.json`)
-- `editor/keybindings.{tode,cursor}.json` = per-editor keybindings (same
-  symlink scheme; commands differ per editor, e.g. cmd+i)
-- `kitty/` ← `~/.config/kitty/` (minus ssh.conf, local-only)
-- `tode/` ← `~/.local/share/tode/` (shortcuts.json, theme files)
-- `scripts/tode-remote-wrapper` → remote `~/.local/share/shellos/`, with the
-  remote-only alias/port/shell stored outside the repo in
-  `~/.config/shellos/remote-tode.env`
-- Hard red lines: no internal host names or machine identifiers anywhere;
-  the remote dev box is only ever "a remote dev server". Keep credentials and
-  host aliases local, but keep every patch implementation in this repository.
-- This skill is symlinked from `~/.claude/skills/shellos` → the repo copy,
-  so editing it here versions it automatically.
+- `editor/settings.json` and both keybinding files are canonical copies. The
+  full installer copies them into tode and Cursor; there are no live links.
+- The full installer also copies both ShellOS skills into Codex and Claude;
+  installed skill directories are not live links to a development checkout.
+- `kitty/`, `tode/`, wrapper scripts, extension lists, Worktree Review source,
+  and binary patch logic are all repository-authoritative.
+- `scripts/sync.sh` is intentionally disabled. Never copy machine state back
+  wholesale. Reproduce the intended change explicitly in an independent
+  checkout so it can be reviewed.
+- Pin installed kitty and tode versions with `third-party/kitty` and
+  `third-party/terminal-code`. A version upgrade is incomplete until the pin,
+  scripts/docs if needed, commit, push, pull, and full reinstall all succeed.
+- Internal helpers (`link.sh`, `install-tode-release.sh`,
+  `apply-tode-patches.sh`, both `patch-*.sh` scripts,
+  `install-worktree-review.sh`, `assert-repo-first.sh`, and
+  `deploy-remote-tode.sh`) are implementation details of
+  `reinstall-shellos.sh`; do not invoke them directly or bypass their guard.
+
+## Knowledge changes
+
+Record every newly discovered installation requirement, remote compatibility
+fix, and recovery procedure in this repository in the same commit as its
+implementation. `skills/shellos-bootstrap/SKILL.md` and `docs/` must never
+refer to an untracked patch or private operational note.

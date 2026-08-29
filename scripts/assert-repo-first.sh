@@ -5,6 +5,11 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 REMOTE_REF="${SHELLOS_DEPLOY_REF:-origin/main}"
 
+if [[ "${SHELLOS_FULL_REINSTALL:-}" != 1 ]]; then
+  echo "do not deploy selectively; run $REPO/scripts/reinstall-shellos.sh" >&2
+  exit 1
+fi
+
 required=(
   scripts/assert-repo-first.sh
   scripts/apply-tode-patches.sh
