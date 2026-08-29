@@ -29,11 +29,33 @@ shellos manages is being changed, conform to the repo:
   every machine it applies to.
 - Machine-local divergence is allowed only for the explicitly local-only
   files: kitty `ssh.conf`, `.redline-local`, the remote
-  `~/.config/shellos/remote-tode.env`, and machine-specific binary patches.
+  `~/.config/shellos/remote-tode.env`, and generated runtime state. Installed
+  binaries may differ only as the output of committed ShellOS patch scripts.
 - Live-config edits (shortcuts, theme, editor settings) are folded back via
   the sanctioned flows below (`sync.sh` snapshot or the symlinks) in the
   same session — the working tree should never silently disagree with
   reality.
+
+## Mandatory repo-first order
+
+Every patch, hook, wrapper, config change, and installation customization must
+follow this order without exception:
+
+1. Implement it in a clean ShellOS checkout. Never start by editing
+   `~/.local/lib/tode`, `~/.config/kitty`, a remote installation, or another
+   generated/runtime path.
+2. Test patch logic only against disposable copies before publication.
+3. Run redline and relevant static checks, then commit and push `main`.
+4. Use a fresh checkout or `git pull --ff-only` so deployment runs from the
+   exact published commit.
+5. Apply or reinstall only through committed repo scripts, then verify the
+   installed marker/hash and the target behavior.
+
+Never deploy an untracked script, an uncommitted edit, or a file copied from a
+private working directory. If a useful change already exists only in runtime
+state, treat it as evidence: reimplement it in the repo first, publish it, pull
+it back, and only then replace the runtime state. `scripts/assert-repo-first.sh`
+enforces the clean/pushed/pulled preconditions for Tode patch deployment.
 
 ## How config flows
 
@@ -86,7 +108,8 @@ cd ~/wxg/shellos && git add third-party && git commit -m "Pin kitty vX / tode vY
 
 Versions in use: `kitty --version`, `tode --version`. After a tode upgrade
 also re-check that user-data config survived (it should — upgrades replace
-the install dir, not the data dir) and run the sync workflow.
+the install dir, not the data dir), pull `main`, run
+`scripts/apply-tode-patches.sh`, and then run the sync workflow.
 
 ## When knowledge changes
 
@@ -108,7 +131,7 @@ config change — the bootstrap skill is only useful if it stays current.
   remote-only alias/port/shell stored outside the repo in
   `~/.config/shellos/remote-tode.env`
 - Hard red lines: no internal host names or machine identifiers anywhere;
-  the remote dev box is only ever "a remote dev server"; its patches live in
-  local Claude memory, never in the repo.
+  the remote dev box is only ever "a remote dev server". Keep credentials and
+  host aliases local, but keep every patch implementation in this repository.
 - This skill is symlinked from `~/.claude/skills/shellos` → the repo copy,
   so editing it here versions it automatically.

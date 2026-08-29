@@ -24,6 +24,11 @@
 # replace the install dir wholesale).
 set -euo pipefail
 
+MODE=""
+if [[ "${1:-}" == "--check" ]]; then
+  MODE="--check"
+  shift
+fi
 TARGET="${1:-$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js}"
 
 if [ ! -f "$TARGET" ]; then
@@ -43,13 +48,22 @@ if [ -z "$NODE" ]; then
   exit 1
 fi
 
-"$NODE" - "$TARGET" <<'JS'
+"$NODE" - "$TARGET" "$MODE" <<'JS'
 const fs = require("fs");
 const target = process.argv[2];
+const mode = process.argv[3];
 let src = fs.readFileSync(target, "utf8");
 
 const patchedMark = "/* shellos: unfocused-throttle v2 */";
 const oldMark = "/* shellos: unfocused-throttle */";
+if (mode === "--check") {
+  if (!src.includes(patchedMark)) {
+    console.error("unfocused-throttle v2 patch is missing: " + target);
+    process.exit(1);
+  }
+  console.log("unfocused-throttle v2 patch verified: " + target);
+  process.exit(0);
+}
 if (src.includes(patchedMark)) {
   console.log("already patched: " + target);
   process.exit(0);

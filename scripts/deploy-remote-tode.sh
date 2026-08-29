@@ -23,6 +23,8 @@ for command in ssh scp python3; do
   }
 done
 
+"$REPO/scripts/apply-tode-patches.sh"
+
 work=$(mktemp -d /tmp/shellos-remote-tode.XXXXXX)
 remote_work=""
 cleanup() {
@@ -68,12 +70,15 @@ PY
 
 cp "$REPO/editor/keybindings.tode.json" "$work/keybindings.json"
 cp "$REPO/scripts/tode-remote-wrapper" "$work/tode-remote-wrapper"
+cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
+cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
 printf "TODE_REMOTE_SSH_HOST='%s'\nTODE_REMOTE_PORT='%s'\nTODE_REMOTE_SHELL='%s'\n" \
   "$SSH_HOST" "$PORT" "$remote_shell" > "$work/remote-tode.env"
 
 remote_work=$(ssh "$SSH_HOST" 'mktemp -d /tmp/shellos-remote-tode.XXXXXX')
 scp -q "$work/settings.json" "$work/keybindings.json" \
   "$work/tode-remote-wrapper" "$work/remote-tode.env" \
+  "$work/patch-terminal-browser.sh" "$work/patch-tode-cmd-right-click.sh" \
   "$SSH_HOST:$remote_work/"
 
 ssh "$SSH_HOST" bash -s -- "$remote_work" "$PORT" <<'REMOTE'
@@ -111,6 +116,9 @@ install -m 644 "$staging/settings.json" "$user_dir/settings.json"
 install -m 644 "$staging/keybindings.json" "$user_dir/keybindings.json"
 install -m 600 "$staging/remote-tode.env" "$config_dir/remote-tode.env"
 ln -sfn "$share_dir/tode-remote-wrapper" "$bin_dir/tode"
+
+bash "$staging/patch-terminal-browser.sh"
+bash "$staging/patch-tode-cmd-right-click.sh"
 
 tmux kill-session -t "code-server-$port" 2>/dev/null || true
 echo "remote backup: $backup"

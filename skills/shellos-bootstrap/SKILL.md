@@ -73,30 +73,20 @@ Notes on what these files are:
   `basedpyright.analysis.typeCheckingMode: "off"` (lint belongs to ruff;
   the language server is only for navigation).
 
-Disable macOS App Nap for tode's renderer (it is a headless Electron with no
-visible windows of its own, so macOS naps it whenever the user switches away;
-the first interaction after coming back then stalls on wake-up plus a
-full-frame redraw):
+Apply the committed Tode install patches. The script refuses to run unless the
+ShellOS checkout is clean and `HEAD` exactly matches `origin/main`, so pull the
+published revision before this step:
 
 ```bash
-defaults write dev.zenbu.terminal-browser NSAppSleepDisabled -bool YES
+git -C "$REPO" pull --ff-only origin main
+$REPO/scripts/apply-tode-patches.sh
 ```
 
-Takes effect on the next daemon launch (`tode --shutdown`, then reopen).
-
-Then patch the vendored terminal-browser (macOS):
-
-```bash
-$REPO/scripts/patch-terminal-browser.sh
-```
-
-Upstream renders the active tab at full display rate even when the terminal
-pane lost focus hours ago; on macOS that sustained pixel churn into a hidden
-kitty window can wedge kitty's GL→Metal texture uploads and stall the whole
-desktop. The patch throttles the active tab to 2 fps while the pane is
-unfocused (details in the script header). Idempotent, keeps a `.orig`
-backup — **re-run it after every tode upgrade**, upgrades replace the
-install dir.
+This disables App Nap on macOS, stops terminal-browser painting while the pane
+is unfocused, and installs Cmd+right-click (Ctrl+right-click on Linux) Go Back.
+The patch scripts keep pristine `.orig` backups and are idempotent. Tode
+upgrades replace the install directory, so repeat this committed-pull-deploy
+sequence after every upgrade. Then run `tode --shutdown` and reopen Tode.
 
 ## 3. Extensions
 

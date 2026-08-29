@@ -68,6 +68,14 @@ it locally with `scripts/install-worktree-review.sh`, or on a paired remote
 host with `scripts/install-worktree-review.sh <ssh-alias>`. Remote deployment
 also installs the bundled extension automatically.
 
+## Repo-first deployment
+
+Never patch an installed Tode/kitty tree or deploy an untracked script first.
+Implement and test against copies in this repository, commit and push `main`,
+pull that published commit into the deployment checkout, then run the tracked
+installer. `scripts/apply-tode-patches.sh` enforces a clean checkout whose HEAD
+matches `origin/main` before it changes an installed Tode tree.
+
 ## Keeping the repo fresh
 
 - Editor settings/keybindings are symlinked — any change (settings UI or
