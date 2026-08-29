@@ -1,5 +1,6 @@
 "use strict";
 
+const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
 const {
@@ -133,12 +134,24 @@ class BranchReviewScmController {
     );
   }
 
-  async openChange(target) {
+  async openChange(target, layout = "sideBySide") {
     if (!target || !target.repoRoot || !target.file) {
       return;
     }
 
     const file = target.file;
+    const sourcePath = path.join(target.repoRoot, ...file.path.split("/"));
+    if (
+      layout === "source" &&
+      file.statusKind !== "D" &&
+      fs.existsSync(sourcePath)
+    ) {
+      await vscode.window.showTextDocument(vscode.Uri.file(sourcePath), {
+        preview: true,
+      });
+      return;
+    }
+
     const leftPath = file.oldPath || file.path;
     const rightPath = file.path;
     const leftUri =

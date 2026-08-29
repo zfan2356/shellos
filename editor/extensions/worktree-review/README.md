@@ -26,12 +26,14 @@ The command palette intentionally exposes only four `Worktree Review` controls:
 
 - `Select Base Branch`
 - `Use Side-by-Side Diff`
-- `Use Inline Diff`
+- `Use Source View`
 - `Toggle Automatic Review`
 
-Side-by-side mode keeps the two editor columns visible even when the editor becomes narrow. Inline mode shows additions and deletions in one editor column. They are two layouts for the same base-versus-worktree comparison.
+The generated `Focus on Changes View` and `Focus on Worktrees View` commands are hidden. Use the built-in `View: Show Worktree Review` entry to navigate to the review sidebar.
 
-Automatic review decorates changed files in Explorer and replaces a changed source file opened from Explorer with its diff. Turning it off leaves manual review from the `Changes` tree available.
+Side-by-side mode keeps the base and worktree in separate editor columns even when the editor becomes narrow. Source view opens the normal editable worktree file and leaves change markers in the gutter. Deleted files still open as a diff against an empty right-hand side because no source file remains.
+
+Automatic review decorates changed files in Explorer. In side-by-side mode, it replaces a changed source file opened from Explorer with its diff; source view leaves the normal file open. Turning it off leaves manual review from the `Changes` tree available.
 
 Refresh, worktree selection, copy-path, and file-opening actions remain available only where they are relevant, such as view toolbars and item context menus.
 
@@ -40,15 +42,15 @@ Refresh, worktree selection, copy-path, and file-opening actions remain availabl
 1. Open the feature worktree in VS Code or Tode.
 2. Open the Worktree Review activity bar item.
 3. Choose the base branch. The current worktree is selected automatically; another linked worktree can be selected from the Worktrees list.
-4. Choose side-by-side or inline layout.
-5. Click a file in `Changes` to open its diff directly, or open a decorated changed file from Explorer while automatic review is enabled.
+4. Choose side-by-side diff or source view.
+5. Click a file in `Changes` to open the selected presentation directly, or open a decorated changed file from Explorer while automatic review is enabled.
 
 The normal Git provider remains unchanged and continues to show the real `git status`.
 
 ## Settings
 
 - `worktreeReview.enabled`: enable Explorer decorations and automatic diff opening.
-- `worktreeReview.diffLayout`: `sideBySide` or `inline`.
+- `worktreeReview.diffLayout`: `sideBySide` or `source`. Existing `inline` values migrate to source view.
 - `worktreeReview.includeCurrentWorktree`: include the current workspace in the Worktrees list.
 - `worktreeReview.branchChanges.enabled`: show the read-only Branch Changes SCM provider.
 - `worktreeReview.branchChanges.baseRef`: base branch used for merge-base comparison.

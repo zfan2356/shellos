@@ -31,16 +31,16 @@ const {
 
 const GIT_BLOB_SCHEME = "worktree-review";
 const MAX_GIT_BUFFER = 20 * 1024 * 1024;
-const DIFF_LAYOUTS = {
+const REVIEW_LAYOUTS = {
   sideBySide: {
     label: "Side by Side",
     description: "Show base and worktree in separate columns",
     icon: "split-horizontal",
   },
-  inline: {
-    label: "Inline",
-    description: "Show additions and deletions in one column",
-    icon: "list-flat",
+  source: {
+    label: "Source",
+    description: "Open the editable worktree source file",
+    icon: "file-code",
   },
 };
 
@@ -88,9 +88,6 @@ function activate(context) {
       provider.handleTreeSelection(event.selection[0])
     ),
     statusBar,
-    vscode.workspace.onDidOpenTextDocument((document) =>
-      provider.handleOpenedDocument(document)
-    ),
     vscode.window.onDidChangeActiveTextEditor((editor) =>
       provider.handleActiveEditor(editor)
     ),
@@ -114,7 +111,7 @@ function activate(context) {
       branchScm.toggleEnabled()
     ),
     vscode.commands.registerCommand(OPEN_CHANGE_COMMAND, (target) =>
-      branchScm.openChange(target)
+      branchScm.openChange(target, provider.diffLayout)
     ),
     vscode.commands.registerCommand("worktreeReview.selectBaseRef", async (node) => {
       const selection = await provider.selectBaseRef(node);
@@ -128,8 +125,8 @@ function activate(context) {
     vscode.commands.registerCommand("worktreeReview.useSideBySideDiff", () =>
       provider.setDiffLayout("sideBySide")
     ),
-    vscode.commands.registerCommand("worktreeReview.useInlineDiff", () =>
-      provider.setDiffLayout("inline")
+    vscode.commands.registerCommand("worktreeReview.useSourceView", () =>
+      provider.setDiffLayout("source")
     ),
     vscode.commands.registerCommand("worktreeReview.toggleReview", () =>
       provider.toggleReview()
@@ -320,8 +317,10 @@ class WorktreeReviewProvider {
     const configuration = vscode.workspace.getConfiguration("worktreeReview");
     this.enabled = configuration.get("enabled", true);
     const configuredLayout = configuration.get("diffLayout", "sideBySide");
-    this.diffLayout = DIFF_LAYOUTS[configuredLayout]
-      ? configuredLayout
+    const migratedLayout =
+      configuredLayout === "inline" ? "source" : configuredLayout;
+    this.diffLayout = REVIEW_LAYOUTS[migratedLayout]
+      ? migratedLayout
       : "sideBySide";
     this.baseRefs = new Map();
     this.repoCache = new Map();
@@ -606,7 +605,7 @@ class WorktreeReviewProvider {
   }
 
   async setDiffLayout(layout) {
-    if (!DIFF_LAYOUTS[layout]) {
+    if (!REVIEW_LAYOUTS[layout]) {
       return;
     }
 
@@ -620,20 +619,17 @@ class WorktreeReviewProvider {
   }
 
   async applyDiffLayout() {
-    const sideBySide = this.diffLayout === "sideBySide";
     const configuration = vscode.workspace.getConfiguration("diffEditor");
     await configuration.update(
       "renderSideBySide",
-      sideBySide,
+      true,
       vscode.ConfigurationTarget.Global
     );
-    if (sideBySide) {
-      await configuration.update(
-        "useInlineViewWhenSpaceIsLimited",
-        false,
-        vscode.ConfigurationTarget.Global
-      );
-    }
+    await configuration.update(
+      "useInlineViewWhenSpaceIsLimited",
+      false,
+      vscode.ConfigurationTarget.Global
+    );
   }
 
   async toggleReview() {
@@ -803,7 +799,12 @@ class WorktreeReviewProvider {
   }
 
   async handleActiveEditor(editor) {
-    if (!editor || !this.enabled || this.openingReview) {
+    if (
+      !editor ||
+      !this.enabled ||
+      this.openingReview ||
+      this.diffLayout === "source"
+    ) {
       return;
     }
 
@@ -821,32 +822,10 @@ class WorktreeReviewProvider {
       return;
     }
 
-    this.openingReview = true;
     try {
       await this.openReviewTarget(match, { fromExplorer: true, preview: true });
     } catch (error) {
       vscode.window.showWarningMessage(`Worktree Review open failed: ${formatError(error)}`);
-    } finally {
-      setTimeout(() => {
-        this.openingReview = false;
-      }, 100);
-    }
-  }
-
-  async handleOpenedDocument(document) {
-    if (!this.enabled || !document || document.uri.scheme !== "file") {
-      return;
-    }
-
-    const match = this.findChangeForUri(document.uri);
-    if (!match) {
-      return;
-    }
-
-    try {
-      await this.openReviewTarget(match, { fromExplorer: true, preview: true });
-    } catch {
-      // The active-editor handler will report errors if the fallback path also fails.
     }
   }
 
@@ -922,7 +901,23 @@ class WorktreeReviewProvider {
   }
 
   async openReviewTarget(target, options = {}) {
-    await this.openDiffForFile(target.worktree, target.file, options);
+    if (this.openingReview) {
+      return;
+    }
+
+    this.openingReview = true;
+    try {
+      if (this.diffLayout === "source") {
+        await this.openSourceForFile(target.worktree, target.file, options);
+        return;
+      }
+
+      await this.openDiffForFile(target.worktree, target.file, options);
+    } finally {
+      setTimeout(() => {
+        this.openingReview = false;
+      }, 100);
+    }
   }
 
   async focusReview() {
@@ -951,6 +946,23 @@ class WorktreeReviewProvider {
     const title = `${statusInfo(file.statusKind).badge} ${rightPath} (${worktree.repo.baseRef}...${worktree.label})`;
 
     await vscode.commands.executeCommand("vscode.diff", leftUri, rightUri, title, {
+      preview: options.preview === true,
+    });
+  }
+
+  async openSourceForFile(worktree, file, options = {}) {
+    if (file.statusKind === "D") {
+      await this.openDiffForFile(worktree, file, options);
+      return;
+    }
+
+    const filePath = path.join(worktree.path, ...file.path.split("/"));
+    if (!fs.existsSync(filePath)) {
+      await this.openDiffForFile(worktree, file, options);
+      return;
+    }
+
+    await vscode.window.showTextDocument(vscode.Uri.file(filePath), {
       preview: options.preview === true,
     });
   }
@@ -1045,9 +1057,9 @@ class WorktreeReviewProvider {
     if (!this.enabled) {
       this.statusBar.text = "$(circle-slash) WTR: Off";
     } else if (firstState) {
-      this.statusBar.text = `$(git-branch) WTR: ${firstState.worktree.label} · ${DIFF_LAYOUTS[this.diffLayout].label}`;
+      this.statusBar.text = `$(git-branch) WTR: ${firstState.worktree.label} · ${REVIEW_LAYOUTS[this.diffLayout].label}`;
     } else {
-      this.statusBar.text = `$(git-branch) WTR: Select worktree · ${DIFF_LAYOUTS[this.diffLayout].label}`;
+      this.statusBar.text = `$(git-branch) WTR: Select worktree · ${REVIEW_LAYOUTS[this.diffLayout].label}`;
     }
 
     this.statusBar.tooltip =
@@ -1074,7 +1086,7 @@ class RepoNode {
       vscode.TreeItemCollapsibleState.Expanded
     );
     const target = this.activeWorktree ? this.activeWorktree.label : "none";
-    item.description = `base: ${this.baseRef} · target: ${target} · ${DIFF_LAYOUTS[this.diffLayout].label}`;
+    item.description = `base: ${this.baseRef} · target: ${target} · ${REVIEW_LAYOUTS[this.diffLayout].label}`;
     item.tooltip = `${this.repoRoot}\nCurrent: ${this.currentRef}\nBase: ${this.baseRef}\nTarget: ${target}`;
     item.contextValue = "repo";
     item.iconPath = new vscode.ThemeIcon("repo");
@@ -1171,7 +1183,7 @@ class ChangedFileNode {
     );
     item.command = {
       command: "worktreeReview.openChangedFile",
-      title: "Open Changed File Diff",
+      title: "Open Changed File",
       arguments: [this],
     };
     return item;

@@ -99,9 +99,22 @@ test("command palette exposes only the four primary review controls", () => {
   assert.deepEqual(visiblePaletteCommands(), [
     "worktreeReview.selectBaseRef",
     "worktreeReview.useSideBySideDiff",
-    "worktreeReview.useInlineDiff",
+    "worktreeReview.useSourceView",
     "worktreeReview.toggleReview",
   ]);
+});
+
+test("generated view-focus commands stay hidden from the command palette", () => {
+  const hidden = new Set(
+    manifest.contributes.menus.commandPalette
+      .filter((item) => item.when === "false")
+      .map((item) => item.command)
+  );
+
+  assert.equal(hidden.has(`${CHANGES_VIEW_ID}.focus`), true);
+  assert.equal(hidden.has(`${WORKTREES_VIEW_ID}.focus`), true);
+  assert.equal(hidden.has(`${LEGACY_CHANGES_VIEW_ID}.focus`), true);
+  assert.equal(hidden.has(`${LEGACY_WORKTREES_VIEW_ID}.focus`), true);
 });
 
 test("review layout settings have stable defaults", () => {
@@ -111,8 +124,40 @@ test("review layout settings have stable defaults", () => {
   assert.equal(properties["worktreeReview.diffLayout"].default, "sideBySide");
   assert.deepEqual(properties["worktreeReview.diffLayout"].enum, [
     "sideBySide",
-    "inline",
+    "source",
   ]);
+});
+
+test("source view opens files directly and deleted files still use diffs", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+
+  assert.match(source, /this\.diffLayout === "source"[\s\S]*?openSourceForFile/);
+  assert.match(
+    source,
+    /async openSourceForFile[\s\S]*?file\.statusKind === "D"[\s\S]*?openDiffForFile/
+  );
+  assert.match(source, /showTextDocument\(vscode\.Uri\.file\(filePath\)/);
+  assert.match(
+    source,
+    /registerCommand\(OPEN_CHANGE_COMMAND,[\s\S]*?branchScm\.openChange\(target, provider\.diffLayout\)/
+  );
+  assert.equal(source.includes("onDidOpenTextDocument"), false);
+  assert.equal(source.includes("handleOpenedDocument"), false);
+});
+
+test("review openings share one guard to avoid duplicate editor transitions", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /async openReviewTarget[\s\S]*?if \(this\.openingReview\)[\s\S]*?this\.openingReview = true[\s\S]*?this\.openingReview = false/
+  );
 });
 
 test("both base-branch pickers synchronize the sidebar and SCM views", () => {

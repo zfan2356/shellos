@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review cumulative branch changes and Git worktree branches without rewriting repository state.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -43,7 +43,7 @@
     "onCommand:worktreeReview.selectBaseRef",
     "onCommand:worktreeReview.selectWorktree",
     "onCommand:worktreeReview.useSideBySideDiff",
-    "onCommand:worktreeReview.useInlineDiff",
+    "onCommand:worktreeReview.useSourceView",
     "onCommand:worktreeReview.toggleReview",
     "onCommand:worktreeReview.openCurrentFileReview",
     "onCommand:worktreeReview.openChangedFile",
@@ -68,14 +68,14 @@
           "type": "string",
           "enum": [
             "sideBySide",
-            "inline"
+            "source"
           ],
           "enumDescriptions": [
             "Show base and worktree in separate columns.",
-            "Show additions and deletions in one column."
+            "Open the editable worktree source file with gutter change markers."
           ],
           "default": "sideBySide",
-          "description": "Layout used by VS Code diff editors opened from Worktree Review."
+          "description": "Presentation used when opening files from Worktree Review."
         },
         "worktreeReview.includeCurrentWorktree": {
           "type": "boolean",
@@ -139,10 +139,10 @@
         "icon": "$(split-horizontal)"
       },
       {
-        "command": "worktreeReview.useInlineDiff",
-        "title": "Use Inline Diff",
+        "command": "worktreeReview.useSourceView",
+        "title": "Use Source View",
         "category": "Worktree Review",
-        "icon": "$(list-flat)"
+        "icon": "$(file-code)"
       },
       {
         "command": "worktreeReview.toggleReview",
@@ -236,7 +236,7 @@
           "group": "navigation@3"
         },
         {
-          "command": "worktreeReview.useInlineDiff",
+          "command": "worktreeReview.useSourceView",
           "when": "view == worktreeReview.sidebar.worktrees",
           "group": "navigation@4"
         },
@@ -312,6 +312,22 @@
         },
         {
           "command": "worktreeReview.copyWorktreePath",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.sidebar.changes.focus",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.sidebar.worktrees.focus",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.changes.focus",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.worktrees.focus",
           "when": "false"
         }
       ]
