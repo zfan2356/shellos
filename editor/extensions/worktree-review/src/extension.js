@@ -157,6 +157,7 @@ class ReviewPresentationController {
     this.openQueue = Promise.resolve();
     this.currentTarget = undefined;
     this.reviewTab = undefined;
+    this.updatingConfiguration = false;
     this.readConfiguration();
   }
 
@@ -164,6 +165,9 @@ class ReviewPresentationController {
     this.disposables.push(
       this.branchScm.onDidChange((entries) => this.updateEntries(entries)),
       vscode.workspace.onDidChangeConfiguration((event) => {
+        if (this.updatingConfiguration) {
+          return;
+        }
         if (
           event.affectsConfiguration("worktreeReview.enabled") ||
           event.affectsConfiguration("worktreeReview.diffLayout")
@@ -274,15 +278,30 @@ class ReviewPresentationController {
       return;
     }
 
+    this.enabled = true;
     this.diffLayout = layout;
-    await vscode.workspace
-      .getConfiguration("worktreeReview")
-      .update("diffLayout", layout, vscode.ConfigurationTarget.Global);
-    await this.applyDiffLayout();
-    this.updateStatusBar();
-    if (this.enabled) {
-      await this.showReview();
+    this.updatingConfiguration = true;
+    try {
+      const configuration = vscode.workspace.getConfiguration("worktreeReview");
+      await configuration.update(
+        "diffLayout",
+        layout,
+        vscode.ConfigurationTarget.Global
+      );
+      await configuration.update(
+        "enabled",
+        true,
+        vscode.ConfigurationTarget.Global
+      );
+    } catch (error) {
+      this.readConfiguration();
+      throw error;
+    } finally {
+      this.updatingConfiguration = false;
     }
+    await this.applyDiffLayout();
+    this.refreshUi();
+    await this.showReview();
   }
 
   async applyDiffLayout() {
@@ -369,17 +388,47 @@ class ReviewPresentationController {
   }
 
   async closeReview() {
-    const reviewTab = this.reviewTab;
+    const tabGroups = vscode.window.tabGroups;
+    const tabsToClose = new Set();
+    if (this.reviewTab) {
+      tabsToClose.add(this.reviewTab);
+    }
     this.reviewTab = undefined;
-    if (!reviewTab) {
-      return;
+
+    for (const group of tabGroups.all) {
+      for (const tab of group.tabs) {
+        const input = tab.input;
+        if (
+          input &&
+          input.original &&
+          input.modified &&
+          (input.original.scheme === GIT_BLOB_SCHEME ||
+            input.modified.scheme === GIT_BLOB_SCHEME)
+        ) {
+          tabsToClose.add(tab);
+        }
+      }
     }
 
-    const stillOpen = vscode.window.tabGroups.all.some((group) =>
-      group.tabs.includes(reviewTab)
+    if (this.diffLayout === "source" && this.currentTarget) {
+      const activeTab = tabGroups.activeTabGroup.activeTab;
+      const input = activeTab && activeTab.input;
+      const targetUri = vscode.Uri.file(
+        path.join(
+          this.currentTarget.repoRoot,
+          ...this.currentTarget.file.path.split("/")
+        )
+      );
+      if (input && input.uri && uriEquals(input.uri, targetUri)) {
+        tabsToClose.add(activeTab);
+      }
+    }
+
+    const openTabs = [...tabsToClose].filter((tab) =>
+      tabGroups.all.some((group) => group.tabs.includes(tab))
     );
-    if (stillOpen) {
-      await vscode.window.tabGroups.close(reviewTab, true);
+    if (openTabs.length > 0) {
+      await tabGroups.close(openTabs, true);
     }
   }
 

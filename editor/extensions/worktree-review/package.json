@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review the current Git branch against its merge base with a selected base branch.",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -48,7 +48,7 @@
         "worktreeReview.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Keep the current branch review open and decorate changed files. Disabling it closes the review tab."
+          "description": "Keep the current branch review open and decorate changed files. Disabling it closes all editors opened by the review."
         },
         "worktreeReview.diffLayout": {
           "type": "string",
@@ -91,13 +91,13 @@
       },
       {
         "command": "worktreeReview.useSideBySideDiff",
-        "title": "Use Side-by-Side Diff",
+        "title": "Open Side-by-Side Diff",
         "category": "Worktree Review",
         "icon": "$(split-horizontal)"
       },
       {
         "command": "worktreeReview.useSourceView",
-        "title": "Use Source View",
+        "title": "Open Source View",
         "category": "Worktree Review",
         "icon": "$(file-code)"
       },

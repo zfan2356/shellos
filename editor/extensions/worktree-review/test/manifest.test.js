@@ -75,11 +75,11 @@ test("the toggle actively opens and closes the review", () => {
   );
   assert.match(
     source,
-    /async setDiffLayout\(layout\)[\s\S]*?if \(this\.enabled\)[\s\S]*?showReview\(\)/
+    /async setDiffLayout\(layout\)[\s\S]*?this\.enabled = true[\s\S]*?update\([\s\S]*?"enabled",[\s\S]*?true[\s\S]*?await this\.showReview\(\)/
   );
   assert.match(
     source,
-    /async closeReview\(\)[\s\S]*?tabGroups\.close\(reviewTab, true\)/
+    /async closeReview\(\)[\s\S]*?input\.original\.scheme === GIT_BLOB_SCHEME[\s\S]*?this\.diffLayout === "source"[\s\S]*?uriEquals\(input\.uri, targetUri\)[\s\S]*?tabGroups\.close\(openTabs, true\)/
   );
   assert.match(source, /statusBar\.command = "worktreeReview\.toggleReview"/);
 });

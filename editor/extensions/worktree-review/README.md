@@ -25,15 +25,16 @@ shows the real `git status` separately.
 The command palette exposes four controls:
 
 - `Open/Close Review`
-- `Use Side-by-Side Diff`
-- `Use Source View`
+- `Open Side-by-Side Diff`
+- `Open Source View`
 - `Select Base Branch`
 
 Review is enabled by default in Side-by-Side mode. Opening it immediately shows
 the active changed file, the last reviewed file, or the first branch change.
-Switching modes immediately replaces the current Review tab; no second file
-click or trigger command is needed. Closing Review immediately closes the
-current Review tab in either mode.
+Selecting either layout also enables Review and immediately replaces the
+current Review editor; no separate open command, second file click, or trigger
+is needed. Closing Review immediately closes every Review diff editor and the
+source editor currently owned by Source View.
 
 The left-side status bar item is the primary open/close control and reports the
 current branch, base, and layout. Side-by-Side mode shows the base and current
