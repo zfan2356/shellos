@@ -69,6 +69,11 @@ async function activate(context) {
     ),
     vscode.commands.registerCommand("worktreeReview.openCurrentFileReview", () =>
       presentation.openCurrentFileReview()
+    ),
+    vscode.commands.registerCommand(
+      "worktreeReview.interceptExplorerOpen",
+      (uri, editorOptions) =>
+        presentation.interceptExplorerOpen(uri, editorOptions)
     )
   );
 
@@ -149,6 +154,7 @@ class ReviewPresentationController {
     this.disposables = [];
     this.entries = [];
     this.openingReview = false;
+    this.openQueue = Promise.resolve();
     this.currentTarget = undefined;
     this.reviewTab = undefined;
     this.readConfiguration();
@@ -456,6 +462,24 @@ class ReviewPresentationController {
     await this.enableAndOpenTarget(target);
   }
 
+  async interceptExplorerOpen(uri, editorOptions = {}) {
+    if (!this.enabled || !uri || uri.scheme !== "file") {
+      return false;
+    }
+
+    const target = this.branchScm.findChangeForUri(uri);
+    if (!target) {
+      return false;
+    }
+
+    await this.openTarget(target, {
+      preview: editorOptions.pinned !== true,
+      preserveFocus: editorOptions.preserveFocus === true,
+      sideBySide: editorOptions.sideBySide === true,
+    });
+    return true;
+  }
+
   async enableAndOpenTarget(target) {
     if (!this.enabled) {
       this.enabled = true;
@@ -467,11 +491,15 @@ class ReviewPresentationController {
     await this.openTarget(target, { preview: true });
   }
 
-  async openTarget(target, options = {}) {
-    if (this.openingReview) {
-      return;
-    }
+  openTarget(target, options = {}) {
+    const operation = this.openQueue.then(() =>
+      this.doOpenTarget(target, options)
+    );
+    this.openQueue = operation.catch(() => undefined);
+    return operation;
+  }
 
+  async doOpenTarget(target, options = {}) {
     this.openingReview = true;
     try {
       const previousTab = this.reviewTab;
@@ -489,9 +517,7 @@ class ReviewPresentationController {
         await vscode.window.tabGroups.close(previousTab, true);
       }
     } finally {
-      setTimeout(() => {
-        this.openingReview = false;
-      }, 100);
+      this.openingReview = false;
     }
   }
 

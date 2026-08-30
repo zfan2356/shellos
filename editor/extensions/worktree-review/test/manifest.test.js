@@ -84,6 +84,31 @@ test("the toggle actively opens and closes the review", () => {
   assert.match(source, /statusBar\.command = "worktreeReview\.toggleReview"/);
 });
 
+test("Explorer opens changed files through the pre-open review hook", () => {
+  const extensionSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+
+  assert.ok(
+    manifest.activationEvents.includes(
+      "onCommand:worktreeReview.interceptExplorerOpen"
+    )
+  );
+  assert.match(
+    extensionSource,
+    /registerCommand\([\s\S]*?"worktreeReview\.interceptExplorerOpen"/
+  );
+  assert.match(
+    extensionSource,
+    /async interceptExplorerOpen\(uri, editorOptions = \{\}\)[\s\S]*?findChangeForUri\(uri\)[\s\S]*?return true/
+  );
+  assert.match(
+    extensionSource,
+    /openTarget\(target, options = \{\}\)[\s\S]*?this\.openQueue\.then/
+  );
+});
+
 test("review opens the active change or the first current-branch change", () => {
   const extensionSource = fs.readFileSync(
     path.join(__dirname, "..", "src", "extension.js"),
@@ -142,6 +167,6 @@ test("source mode opens files directly while deleted files keep an empty right s
   );
   assert.match(
     source,
-    /file\.statusKind === "D"[\s\S]*?makeEmptyUri[\s\S]*?vscode\.commands\.executeCommand\("vscode\.diff"/
+    /file\.statusKind === "D"[\s\S]*?makeEmptyUri[\s\S]*?vscode\.commands\.executeCommand\(\s*"vscode\.diff"/
   );
 });

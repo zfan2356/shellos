@@ -78,6 +78,8 @@ cp "$REPO/scripts/install-tode-release.sh" "$work/install-tode-release.sh"
 cp "$REPO/scripts/apply-tode-patches.sh" "$work/apply-tode-patches.sh"
 cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
 cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
+cp "$REPO/scripts/patch-tode-worktree-review-click.sh" \
+  "$work/patch-tode-worktree-review-click.sh"
 printf "TODE_REMOTE_SSH_HOST='%s'\nTODE_REMOTE_PORT='%s'\nTODE_REMOTE_SHELL='%s'\n" \
   "$SSH_HOST" "$PORT" "$remote_shell" > "$work/remote-tode.env"
 
@@ -87,7 +89,8 @@ remote_work=$(ssh "$SSH_HOST" 'mktemp -d /tmp/shellos-remote-tode.XXXXXX')
 scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt" \
   "$work/tode-remote-wrapper" "$work/install-tode-release.sh" \
   "$work/apply-tode-patches.sh" "$work/patch-terminal-browser.sh" \
-  "$work/patch-tode-cmd-right-click.sh" "$work/remote-tode.env" \
+  "$work/patch-tode-cmd-right-click.sh" \
+  "$work/patch-tode-worktree-review-click.sh" "$work/remote-tode.env" \
   "$SSH_HOST:$remote_work/"
 
 ssh "$SSH_HOST" bash -s -- "$remote_work" "$PORT" "$TODE_PIN" <<'REMOTE'
@@ -110,7 +113,8 @@ for file in "$bin_dir/tode" "$user_dir/settings.json" "$user_dir/keybindings.jso
 done
 
 chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
-  "$staging/patch-terminal-browser.sh" "$staging/patch-tode-cmd-right-click.sh"
+  "$staging/patch-terminal-browser.sh" "$staging/patch-tode-cmd-right-click.sh" \
+  "$staging/patch-tode-worktree-review-click.sh"
 if [[ -x "$bin_dir/tode" ]]; then
   "$bin_dir/tode" --shutdown >/dev/null 2>&1 || true
 fi
@@ -222,6 +226,11 @@ grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/preload.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/mainscript.js"
+workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
+  -path '*/lib/vscode/out/vs/workbench/workbench.web.main.internal.js' \
+  2>/dev/null | sort -V | tail -n 1)
+[[ -n "$workbench_bundle" ]]
+grep -Fq 'shellos: worktree-review Explorer pre-open v1' "$workbench_bundle"
 REMOTE_VERIFY
 echo "deployed remote tode via $SSH_HOST"
 echo "remote shell: $remote_shell"

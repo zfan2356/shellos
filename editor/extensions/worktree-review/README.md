@@ -42,8 +42,10 @@ gutter change markers. A deleted file always uses the diff editor because no
 source file remains.
 
 Clicking a file in the `Branch Changes` SCM group opens it in the active layout.
-Opening a decorated changed file from Explorer does the same while Review is
-enabled.
+In ShellOS/Tode, a tracked Explorer pre-open hook intercepts decorated changed
+files while Review is enabled, so the selected Review view opens directly and
+the ordinary source editor never flashes first. Other editors use the extension
+listener as a compatibility fallback.
 
 ## Usage
 

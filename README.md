@@ -49,6 +49,7 @@ contain implementation patches or configuration variants.
 | `scripts/assert-repo-first.sh` | Internal published-checkout assertion |
 | `scripts/patch-terminal-browser.sh` | Tracked renderer patch, applied only during full reinstall |
 | `scripts/patch-tode-cmd-right-click.sh` | Tracked navigation patch, applied only during full reinstall |
+| `scripts/patch-tode-worktree-review-click.sh` | Tracked Explorer pre-open hook for flash-free Worktree Review navigation |
 | `scripts/install-worktree-review.sh` | Internal extension build/install helper |
 | `scripts/deploy-remote-tode.sh` | Internal complete remote reinstall helper |
 | `scripts/sync.sh` | Disabled compatibility stop; machine-to-repo sync is forbidden |

@@ -145,14 +145,22 @@ class BranchReviewScmController {
 
     const file = target.file;
     const sourcePath = path.join(target.repoRoot, ...file.path.split("/"));
+    const editorOptions = {
+      preview: options.preview === true,
+      preserveFocus: options.preserveFocus === true,
+    };
+    if (options.sideBySide) {
+      editorOptions.viewColumn = vscode.ViewColumn.Beside;
+    }
     if (
       layout === "source" &&
       file.statusKind !== "D" &&
       fs.existsSync(sourcePath)
     ) {
-      await vscode.window.showTextDocument(vscode.Uri.file(sourcePath), {
-        preview: options.preview === true,
-      });
+      await vscode.window.showTextDocument(
+        vscode.Uri.file(sourcePath),
+        editorOptions
+      );
       return;
     }
 
@@ -182,9 +190,13 @@ class BranchReviewScmController {
           );
     const title = `${statusInfo(file.statusKind).badge} ${rightPath} (${target.baseRef}...${target.currentRef})`;
 
-    await vscode.commands.executeCommand("vscode.diff", leftUri, rightUri, title, {
-      preview: options.preview === true,
-    });
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      leftUri,
+      rightUri,
+      title,
+      editorOptions
+    );
   }
 
   getEntries() {

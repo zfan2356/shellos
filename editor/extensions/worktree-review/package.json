@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review the current Git branch against its merge base with a selected base branch.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -33,7 +33,8 @@
   ],
   "main": "./src/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:worktreeReview.interceptExplorerOpen"
   ],
   "contributes": {
     "configuration": {
@@ -111,6 +112,11 @@
         "title": "Open Current File Review",
         "category": "Worktree Review",
         "icon": "$(diff)"
+      },
+      {
+        "command": "worktreeReview.interceptExplorerOpen",
+        "title": "Intercept Explorer Open",
+        "category": "Worktree Review"
       }
     ],
     "menus": {
@@ -140,6 +146,10 @@
         },
         {
           "command": "worktreeReview.openCurrentFileReview",
+          "when": "false"
+        },
+        {
+          "command": "worktreeReview.interceptExplorerOpen",
           "when": "false"
         }
       ]

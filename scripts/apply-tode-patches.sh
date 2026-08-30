@@ -22,9 +22,11 @@ fi
 if [[ "$MODE" == "--check" ]]; then
   "$SCRIPT_DIR/patch-terminal-browser.sh" --check
   "$SCRIPT_DIR/patch-tode-cmd-right-click.sh" --check
+  "$SCRIPT_DIR/patch-tode-worktree-review-click.sh" --check
 else
   "$SCRIPT_DIR/patch-terminal-browser.sh"
   "$SCRIPT_DIR/patch-tode-cmd-right-click.sh" "$MODE"
+  "$SCRIPT_DIR/patch-tode-worktree-review-click.sh" "$MODE"
 fi
 
 echo "ShellOS Tode patches verified. Restart Tode to load changed install files."

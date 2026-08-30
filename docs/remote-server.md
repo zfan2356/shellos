@@ -67,7 +67,9 @@ native `--ssh` transport as an `overlay-main`. Closing the editor reveals the
 same remote shell. Worktree Review follows the opened repository and current
 Git branch automatically; when enabled, it immediately opens the first branch
 change in the saved layout (Side-by-Side by default). Use the Review status bar
-button to close or reopen it. The pinned Tode `v0.2.0` SSH transport does not
+button to close or reopen it. The tracked Tode workbench patch lets changed
+Explorer files open their review directly, without briefly opening and closing
+the source tab first. The pinned Tode `v0.2.0` SSH transport does not
 forward a trailing `--review` argument, so the repository does not advertise
 that spelling for remote sessions. Leading flags are delegated to the pinned
 remote pixel launcher when appropriate.

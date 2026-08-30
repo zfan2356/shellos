@@ -225,6 +225,11 @@ grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/preload.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/mainscript.js"
+workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
+  -path '*/lib/vscode/out/vs/workbench/workbench.web.main.internal.js' \
+  2>/dev/null | sort -V | tail -n 1)
+[[ -n "$workbench_bundle" ]]
+grep -Fq 'shellos: worktree-review Explorer pre-open v1' "$workbench_bundle"
 [[ "$(defaults read dev.zenbu.terminal-browser NSAppSleepDisabled)" == 1 ]]
 for skill_name in shellos shellos-bootstrap; do
   for skill_root in "$HOME/.codex/skills" "$HOME/.claude/skills"; do
