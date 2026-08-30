@@ -11,70 +11,10 @@ const {
   normalizeFsPath,
   parseNameStatus,
   parseUntrackedFiles,
-  parseWorktreeList,
   relativePathFromRoot,
-  shortSha,
   statusInfo,
   trimTrailingNewline,
 } = require("../src/git-utils");
-
-test("parseWorktreeList parses branch and detached worktrees", () => {
-  const output = [
-    "worktree C:/repo/main",
-    "HEAD 1111111111111111111111111111111111111111",
-    "branch refs/heads/main",
-    "",
-    "worktree C:/repo/feature-a",
-    "HEAD 2222222222222222222222222222222222222222",
-    "branch refs/heads/feature/A",
-    "",
-    "worktree /tmp/detached-review",
-    "HEAD 3333333333333333333333333333333333333333",
-    "detached",
-    "",
-  ].join("\n");
-
-  assert.deepEqual(parseWorktreeList(output), [
-    {
-      path: path.normalize("C:/repo/main"),
-      head: "1111111111111111111111111111111111111111",
-      branch: "main",
-      detached: false,
-    },
-    {
-      path: path.normalize("C:/repo/feature-a"),
-      head: "2222222222222222222222222222222222222222",
-      branch: "feature/A",
-      detached: false,
-    },
-    {
-      path: path.normalize("/tmp/detached-review"),
-      head: "3333333333333333333333333333333333333333",
-      branch: undefined,
-      detached: true,
-    },
-  ]);
-});
-
-test("parseWorktreeList ignores non-worktree blocks", () => {
-  const output = [
-    "garbage true",
-    "branch refs/heads/main",
-    "",
-    "worktree /repo/valid",
-    "HEAD abc",
-    "branch refs/heads/topic",
-  ].join("\n");
-
-  assert.deepEqual(parseWorktreeList(output), [
-    {
-      path: path.normalize("/repo/valid"),
-      head: "abc",
-      branch: "topic",
-      detached: false,
-    },
-  ]);
-});
 
 test("parseNameStatus parses modified, added, deleted, rename, copy, and conflict", () => {
   const output = [
@@ -203,11 +143,6 @@ test("relativePathFromRoot returns POSIX relative paths only inside the repo", (
   assert.equal(relativePathFromRoot(root, file), "src/app.py");
   assert.equal(relativePathFromRoot(root, root), undefined);
   assert.equal(relativePathFromRoot(root, outside), undefined);
-});
-
-test("shortSha handles missing and full SHA values", () => {
-  assert.equal(shortSha(undefined), undefined);
-  assert.equal(shortSha("1234567890abcdef"), "1234567");
 });
 
 test("trimTrailingNewline removes trailing CRLF and LF sequences", () => {

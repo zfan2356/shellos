@@ -9,6 +9,7 @@ const {
   resolveBranchBase,
 } = require("./branch-changes");
 const {
+  buildChangeIndex,
   formatError,
   normalizeFsPath,
   relativePathFromRoot,
@@ -30,6 +31,8 @@ class BranchReviewScmController {
     this.entries = new Map();
     this.disposables = [];
     this.gitRepositorySubscriptions = new Map();
+    this._onDidChange = new vscode.EventEmitter();
+    this.onDidChange = this._onDidChange.event;
     this.syncPromise = Promise.resolve();
     this.disposed = false;
   }
@@ -81,6 +84,7 @@ class BranchReviewScmController {
     }
     this.gitRepositorySubscriptions.clear();
     this.disposeEntries();
+    this._onDidChange.dispose();
   }
 
   async refreshAll(showErrors = true) {
@@ -134,7 +138,7 @@ class BranchReviewScmController {
     );
   }
 
-  async openChange(target, layout = "sideBySide") {
+  async openChange(target, layout = "sideBySide", options = {}) {
     if (!target || !target.repoRoot || !target.file) {
       return;
     }
@@ -147,7 +151,7 @@ class BranchReviewScmController {
       fs.existsSync(sourcePath)
     ) {
       await vscode.window.showTextDocument(vscode.Uri.file(sourcePath), {
-        preview: true,
+        preview: options.preview === true,
       });
       return;
     }
@@ -179,8 +183,75 @@ class BranchReviewScmController {
     const title = `${statusInfo(file.statusKind).badge} ${rightPath} (${target.baseRef}...${target.currentRef})`;
 
     await vscode.commands.executeCommand("vscode.diff", leftUri, rightUri, title, {
-      preview: true,
+      preview: options.preview === true,
     });
+  }
+
+  getEntries() {
+    return Array.from(this.entries.values());
+  }
+
+  getFirstChange() {
+    for (const entry of this.getEntries()) {
+      const file = entry.changeIndex.byPath.values().next().value;
+      if (file) {
+        return this.makeOpenTarget(entry, file);
+      }
+    }
+
+    return undefined;
+  }
+
+  findChangeForUri(uri) {
+    if (!uri || uri.scheme !== "file") {
+      return undefined;
+    }
+
+    const entries = this.getEntries().sort(
+      (left, right) => right.repoRoot.length - left.repoRoot.length
+    );
+    for (const entry of entries) {
+      const relativePath = relativePathFromRoot(entry.repoRoot, uri.fsPath);
+      if (!relativePath) {
+        continue;
+      }
+      const file =
+        entry.changeIndex.byPath.get(relativePath) ||
+        entry.changeIndex.byOldPath.get(relativePath);
+      if (file) {
+        return this.makeOpenTarget(entry, file);
+      }
+    }
+
+    return undefined;
+  }
+
+  findChangedFolderForUri(uri) {
+    if (!uri || uri.scheme !== "file") {
+      return undefined;
+    }
+
+    const entries = this.getEntries().sort(
+      (left, right) => right.repoRoot.length - left.repoRoot.length
+    );
+    for (const entry of entries) {
+      const relativePath = relativePathFromRoot(entry.repoRoot, uri.fsPath);
+      if (relativePath && entry.changeIndex.folders.has(relativePath)) {
+        return { entry, relativePath };
+      }
+    }
+
+    return undefined;
+  }
+
+  makeOpenTarget(entry, file) {
+    return {
+      baseRef: entry.baseRef,
+      currentRef: entry.currentRef,
+      file,
+      headCommit: entry.headCommit,
+      repoRoot: entry.repoRoot,
+    };
   }
 
   synchronizeRepositories(showErrors = false) {
@@ -198,6 +269,7 @@ class BranchReviewScmController {
 
     if (!this.isEnabled()) {
       this.disposeEntries();
+      this._onDidChange.fire([]);
       return;
     }
 
@@ -219,6 +291,11 @@ class BranchReviewScmController {
       if (!this.entries.has(key)) {
         this.entries.set(key, this.createEntry(repoRoot));
       }
+    }
+
+    if (this.entries.size === 0) {
+      this._onDidChange.fire([]);
+      return;
     }
 
     await Promise.all(
@@ -265,7 +342,7 @@ class BranchReviewScmController {
     );
     sourceControl.inputBox.visible = false;
     sourceControl.count = 0;
-    const group = sourceControl.createResourceGroup("changes", "Changes vs main");
+    const group = sourceControl.createResourceGroup("changes", "Changes vs dev");
     group.hideWhenEmpty = false;
     group.resourceStates = [];
 
@@ -275,6 +352,7 @@ class BranchReviewScmController {
       baseSource: undefined,
       compareBaseRef: undefined,
       currentRef: "HEAD",
+      changeIndex: buildChangeIndex([]),
       filesByPath: new Map(),
       group,
       headCommit: "HEAD",
@@ -317,12 +395,14 @@ class BranchReviewScmController {
       entry.filesByPath = new Map(
         result.files.map((file) => [file.path, file])
       );
+      entry.changeIndex = buildChangeIndex(result.files);
       entry.group.resourceStates = result.files.map((file) =>
         this.makeResourceState(entry, file)
       );
       entry.sourceControl.count = result.files.length;
       entry.error = undefined;
       this.updateEntryUi(entry);
+      this._onDidChange.fire(this.getEntries());
     } catch (error) {
       if (this.disposed || refreshToken !== entry.refreshToken) {
         return;
@@ -333,10 +413,12 @@ class BranchReviewScmController {
       entry.baseSource = undefined;
       entry.compareBaseRef = undefined;
       entry.filesByPath = new Map();
+      entry.changeIndex = buildChangeIndex([]);
       entry.group.resourceStates = [];
       entry.sourceControl.count = 0;
       entry.error = message;
       this.updateEntryUi(entry);
+      this._onDidChange.fire(this.getEntries());
       if (showErrors) {
         vscode.window.showWarningMessage(`Branch Changes refresh failed: ${message}`);
       }
@@ -359,11 +441,7 @@ class BranchReviewScmController {
         title: "Open Branch Change",
         arguments: [
           {
-            baseRef: entry.baseRef,
-            currentRef: entry.currentRef,
-            file,
-            headCommit: entry.headCommit,
-            repoRoot: entry.repoRoot,
+            ...this.makeOpenTarget(entry, file),
           },
         ],
       },
@@ -427,7 +505,9 @@ class BranchReviewScmController {
 
   getBaseTooltip(entry) {
     const source =
-      entry.baseSource === "origin/HEAD"
+      entry.baseSource === "dev"
+        ? "auto-detected from dev"
+        : entry.baseSource === "origin/HEAD"
         ? "auto-detected from origin/HEAD"
         : entry.baseSource === "fallback"
           ? "auto-detected from conventional branch names"

@@ -99,7 +99,8 @@ tode <project-path>
 ```
 
 `KITTY_LISTEN_ON` must be present remotely. Plain `ssh` cannot provide the
-forwarded kitty control channel needed for the local overlay. Use
-`View: Show Worktree Review` after the workspace opens; Tode `v0.2.0` does not
-forward a trailing `--review` through its native SSH transport. See
+forwarded kitty control channel needed for the local overlay. Worktree Review
+follows the opened repository and current Git branch automatically, and opens
+the saved layout immediately when enabled. Tode `v0.2.0` does not forward a
+trailing `--review` through its native SSH transport. See
 `docs/remote-server.md`.

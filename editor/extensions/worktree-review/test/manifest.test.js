@@ -6,24 +6,10 @@ const path = require("path");
 const test = require("node:test");
 
 const manifest = require("../package.json");
-const {
-  CHANGES_VIEW_ID,
-  LEGACY_CHANGES_VIEW_ID,
-  LEGACY_WORKTREES_VIEW_ID,
-  WORKTREES_VIEW_ID,
-  getChangesViewIds,
-  getWorktreesViewIds,
-} = require("../src/view-ids");
-
-function contributedViewIds() {
-  return Object.values(manifest.contributes.views)
-    .flat()
-    .map((view) => view.id);
-}
 
 function visiblePaletteCommands() {
   const hidden = new Set(
-    manifest.contributes.menus.commandPalette
+    (manifest.contributes.menus.commandPalette || [])
       .filter((item) => item.when === "false")
       .map((item) => item.command)
   );
@@ -32,94 +18,43 @@ function visiblePaletteCommands() {
     .filter((command) => !hidden.has(command));
 }
 
-test("review sidebar contributes the runtime view ids", () => {
-  assert.deepEqual(
-    manifest.contributes.views.worktreeReview.map((view) => view.id),
-    [CHANGES_VIEW_ID, WORKTREES_VIEW_ID]
-  );
-  assert.equal(contributedViewIds().includes(CHANGES_VIEW_ID), true);
-  assert.equal(contributedViewIds().includes(WORKTREES_VIEW_ID), true);
-});
-
-test("activation events include primary review sidebar views", () => {
+test("removes custom view containers and generated focus commands", () => {
+  assert.equal(manifest.contributes.viewsContainers, undefined);
+  assert.equal(manifest.contributes.views, undefined);
   assert.equal(
-    manifest.activationEvents.includes(`onView:${CHANGES_VIEW_ID}`),
-    true
-  );
-  assert.equal(
-    manifest.activationEvents.includes(`onView:${WORKTREES_VIEW_ID}`),
-    true
-  );
-});
-
-test("runtime fallback keeps current ids before legacy ids", () => {
-  assert.deepEqual(getChangesViewIds(), [CHANGES_VIEW_ID, LEGACY_CHANGES_VIEW_ID]);
-  assert.deepEqual(getWorktreesViewIds(), [
-    WORKTREES_VIEW_ID,
-    LEGACY_WORKTREES_VIEW_ID,
-  ]);
-});
-
-test("menu view clauses only reference contributed review view ids", () => {
-  const ids = new Set(contributedViewIds());
-  const clauses = [
-    ...manifest.contributes.menus["view/title"],
-    ...manifest.contributes.menus["view/item/context"],
-  ];
-
-  for (const item of clauses) {
-    const matches = [...(item.when || "").matchAll(/view == ([\w.]+)/g)];
-    for (const match of matches) {
-      assert.equal(ids.has(match[1]), true, `${item.command} references ${match[1]}`);
-    }
-  }
-});
-
-test("branch changes contributes configuration, commands, and SCM title actions", () => {
-  const properties = manifest.contributes.configuration.properties;
-  const commands = new Set(
-    manifest.contributes.commands.map((command) => command.command)
-  );
-  const scmTitleCommands = new Set(
-    manifest.contributes.menus["scm/title"].map((item) => item.command)
+    manifest.activationEvents.some((event) => event.startsWith("onView:")),
+    false
   );
 
-  assert.equal(properties["worktreeReview.branchChanges.enabled"].default, true);
-  assert.equal(properties["worktreeReview.includeCurrentWorktree"].default, true);
-  assert.equal(properties["worktreeReview.branchChanges.baseRef"].default, "auto");
-  assert.equal(properties["worktreeReview.branchChanges.baseRef"].scope, "resource");
-  assert.equal(commands.has("worktreeReview.refreshBranchChanges"), true);
-  assert.equal(commands.has("worktreeReview.selectBranchBaseRef"), true);
-  assert.equal(commands.has("worktreeReview.toggleBranchChanges"), true);
-  assert.equal(scmTitleCommands.has("worktreeReview.refreshBranchChanges"), true);
-  assert.equal(scmTitleCommands.has("worktreeReview.selectBranchBaseRef"), true);
+  const manifestText = JSON.stringify(manifest);
+  assert.equal(manifestText.includes("Focus on"), false);
+  assert.equal(manifestText.includes(".focus"), false);
 });
 
-test("command palette exposes only the four primary review controls", () => {
+test("removes worktree navigation and exposes only four primary controls", () => {
+  const manifestText = JSON.stringify(manifest);
+  assert.equal(manifestText.includes("selectWorktree"), false);
+  assert.equal(manifestText.includes("includeCurrentWorktree"), false);
   assert.deepEqual(visiblePaletteCommands(), [
-    "worktreeReview.selectBaseRef",
+    "worktreeReview.selectBranchBaseRef",
     "worktreeReview.useSideBySideDiff",
     "worktreeReview.useSourceView",
     "worktreeReview.toggleReview",
   ]);
 });
 
-test("generated view-focus commands stay hidden from the command palette", () => {
-  const hidden = new Set(
-    manifest.contributes.menus.commandPalette
-      .filter((item) => item.when === "false")
-      .map((item) => item.command)
-  );
+test("branch review defaults to dev-aware merge-base comparison", () => {
+  const properties = manifest.contributes.configuration.properties;
+  const base = properties["worktreeReview.branchChanges.baseRef"];
 
-  assert.equal(hidden.has(`${CHANGES_VIEW_ID}.focus`), true);
-  assert.equal(hidden.has(`${WORKTREES_VIEW_ID}.focus`), true);
-  assert.equal(hidden.has(`${LEGACY_CHANGES_VIEW_ID}.focus`), true);
-  assert.equal(hidden.has(`${LEGACY_WORKTREES_VIEW_ID}.focus`), true);
+  assert.equal(base.default, "auto");
+  assert.equal(base.scope, "resource");
+  assert.match(base.description, /dev/);
+  assert.match(base.description, /merge base/i);
 });
 
-test("review layout settings have stable defaults", () => {
+test("review has exactly side-by-side and source layouts", () => {
   const properties = manifest.contributes.configuration.properties;
-
   assert.equal(properties["worktreeReview.enabled"].default, true);
   assert.equal(properties["worktreeReview.diffLayout"].default, "sideBySide");
   assert.deepEqual(properties["worktreeReview.diffLayout"].enum, [
@@ -128,27 +63,7 @@ test("review layout settings have stable defaults", () => {
   ]);
 });
 
-test("source view opens files directly and deleted files still use diffs", () => {
-  const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "extension.js"),
-    "utf8"
-  );
-
-  assert.match(source, /this\.diffLayout === "source"[\s\S]*?openSourceForFile/);
-  assert.match(
-    source,
-    /async openSourceForFile[\s\S]*?file\.statusKind === "D"[\s\S]*?openDiffForFile/
-  );
-  assert.match(source, /showTextDocument\(vscode\.Uri\.file\(filePath\)/);
-  assert.match(
-    source,
-    /registerCommand\(OPEN_CHANGE_COMMAND,[\s\S]*?branchScm\.openChange\(target, provider\.diffLayout\)/
-  );
-  assert.equal(source.includes("onDidOpenTextDocument"), false);
-  assert.equal(source.includes("handleOpenedDocument"), false);
-});
-
-test("review openings share one guard to avoid duplicate editor transitions", () => {
+test("the toggle actively opens and closes the review", () => {
   const source = fs.readFileSync(
     path.join(__dirname, "..", "src", "extension.js"),
     "utf8"
@@ -156,11 +71,50 @@ test("review openings share one guard to avoid duplicate editor transitions", ()
 
   assert.match(
     source,
-    /async openReviewTarget[\s\S]*?if \(this\.openingReview\)[\s\S]*?this\.openingReview = true[\s\S]*?this\.openingReview = false/
+    /async toggleReview\(\)[\s\S]*?if \(enable\)[\s\S]*?showReview\(\)[\s\S]*?closeReview\(\)/
   );
+  assert.match(
+    source,
+    /async setDiffLayout\(layout\)[\s\S]*?if \(this\.enabled\)[\s\S]*?showReview\(\)/
+  );
+  assert.match(
+    source,
+    /async closeReview\(\)[\s\S]*?tabGroups\.close\(reviewTab, true\)/
+  );
+  assert.match(source, /statusBar\.command = "worktreeReview\.toggleReview"/);
 });
 
-test("both base-branch pickers synchronize the sidebar and SCM views", () => {
+test("review opens the active change or the first current-branch change", () => {
+  const extensionSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+  const scmSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "branch-review-scm.js"),
+    "utf8"
+  );
+
+  assert.match(
+    extensionSource,
+    /targetFromActiveEditor\(\)[\s\S]*?resolveCurrentTarget\(\)[\s\S]*?branchScm\.getFirstChange\(\)/
+  );
+  assert.match(scmSource, /getFirstChange\(\)[\s\S]*?makeOpenTarget/);
+});
+
+test("Git repository state changes refresh the current branch automatically", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "branch-review-scm.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /repository\.state\.onDidChange\(\(\)\s*=>[\s\S]*?this\.scheduleForPath\(repository\.rootUri\.fsPath\)/
+  );
+  assert.match(source, /getCurrentRef[\s\S]*?branch[\s\S]*?--show-current/);
+});
+
+test("branch changes replace the review and close it when no changes remain", () => {
   const source = fs.readFileSync(
     path.join(__dirname, "..", "src", "extension.js"),
     "utf8"
@@ -168,53 +122,26 @@ test("both base-branch pickers synchronize the sidebar and SCM views", () => {
 
   assert.match(
     source,
-    /branchScm\.selectBaseRef\(sourceControl\)[\s\S]*?provider\.setBaseRef\(selection\.repoRoot, selection\.baseRef\)/
+    /previousComparisons[\s\S]*?entry\.compareBaseRef[\s\S]*?entry\.headCommit/
   );
   assert.match(
     source,
-    /provider\.selectBaseRef\(node\)[\s\S]*?branchScm\.setBaseRef\(selection\.repoRoot, selection\.baseRef\)/
+    /if \(!this\.branchScm\.getFirstChange\(\)\) \{[\s\S]*?this\.closeReview\(\)/
   );
 });
 
-test("obsolete mode and side-panel contributions are removed", () => {
-  const manifestText = JSON.stringify(manifest);
-
-  assert.equal(manifestText.includes("worktreeReview.selectMode"), false);
-  assert.equal(manifestText.includes("worktreeReview.focusDiffPanel"), false);
-  assert.equal(manifestText.includes("worktreeReview.secondaryDiff"), false);
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(
-      manifest.contributes.viewsContainers,
-      "secondarySidebar"
-    ),
-    false
-  );
-});
-
-test("changed-file rows open diffs directly without a selection listener", () => {
+test("source mode opens files directly while deleted files keep an empty right side", () => {
   const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "extension.js"),
+    path.join(__dirname, "..", "src", "branch-review-scm.js"),
     "utf8"
   );
 
   assert.match(
     source,
-    /item\.command\s*=\s*\{\s*command:\s*"worktreeReview\.openChangedFile"/
+    /layout === "source"[\s\S]*?file\.statusKind !== "D"[\s\S]*?showTextDocument/
   );
-  assert.equal(
-    source.includes("changesRegistration.treeView.onDidChangeSelection"),
-    false
-  );
-});
-
-test("deleted files use an empty right side in native diffs", () => {
-  const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "extension.js"),
-    "utf8"
-  );
-
   assert.match(
     source,
-    /file\.statusKind === "D"\s*\? makeEmptyUri\([\s\S]*?\)\s*:\s*makeWorktreeFileUri/
+    /file\.statusKind === "D"[\s\S]*?makeEmptyUri[\s\S]*?vscode\.commands\.executeCommand\("vscode\.diff"/
   );
 });

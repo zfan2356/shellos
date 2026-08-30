@@ -157,13 +157,13 @@ test("resolveBranchBase uses an explicit configured ref", async () => {
   ]);
 });
 
-test("resolveBranchBase auto-detects the remote default branch", async () => {
+test("resolveBranchBase prefers local dev before the remote default branch", async () => {
   const git = {
     async run(_repoRoot, args) {
       if (args[0] === "symbolic-ref") {
-        return "origin/dev";
+        return "origin/trunk";
       }
-      if (args[0] === "rev-parse" && args[2] === "origin/dev^{commit}") {
+      if (args[0] === "rev-parse" && args[2] === "dev^{commit}") {
         return "base-commit";
       }
       throw new Error(`Unexpected Git command: ${args.join(" ")}`);
@@ -171,7 +171,26 @@ test("resolveBranchBase auto-detects the remote default branch", async () => {
   };
 
   assert.deepEqual(await resolveBranchBase(git, "/repo", AUTO_BASE_REF), {
-    ref: "origin/dev",
+    ref: "dev",
+    source: "dev",
+  });
+});
+
+test("resolveBranchBase uses the remote default branch when dev is unavailable", async () => {
+  const git = {
+    async run(_repoRoot, args) {
+      if (args[0] === "symbolic-ref") {
+        return "origin/trunk";
+      }
+      if (args[0] === "rev-parse" && args[2] === "origin/trunk^{commit}") {
+        return "base-commit";
+      }
+      throw new Error("missing ref");
+    },
+  };
+
+  assert.deepEqual(await resolveBranchBase(git, "/repo", AUTO_BASE_REF), {
+    ref: "origin/trunk",
     source: "origin/HEAD",
   });
 });

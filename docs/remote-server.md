@@ -65,11 +65,13 @@ tode <remote-project-path>
 
 The remote `tode` wrapper asks the local kitty to launch local tode with its
 native `--ssh` transport as an `overlay-main`. Closing the editor reveals the
-same remote shell. After the workspace opens, run `View: Show Worktree Review`
-from the command palette to enter review mode. The pinned Tode `v0.2.0` SSH
-transport does not forward a trailing `--review` argument, so the repository
-does not advertise that spelling for remote sessions. Leading flags are
-delegated to the pinned remote pixel launcher when appropriate.
+same remote shell. Worktree Review follows the opened repository and current
+Git branch automatically; when enabled, it immediately opens the first branch
+change in the saved layout (Side-by-Side by default). Use the Review status bar
+button to close or reopen it. The pinned Tode `v0.2.0` SSH transport does not
+forward a trailing `--review` argument, so the repository does not advertise
+that spelling for remote sessions. Leading flags are delegated to the pinned
+remote pixel launcher when appropriate.
 
 The historical `scripts/tode-remote <ssh-host> [remote-path] [port]` launcher
 remains a tracked compatibility/debugging tool, but it is not an installation

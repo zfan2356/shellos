@@ -210,7 +210,8 @@ Open this folder in VS Code:
 
 $mainRepo
 
-Then open the Worktree Review activity bar item.
+Open any generated feature worktree. Review follows its current branch and opens
+the first change automatically when enabled.
 
 Generated branches:
 

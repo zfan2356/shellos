@@ -2,39 +2,6 @@
 
 const path = require("path");
 
-function parseWorktreeList(output) {
-  return output
-    .split(/\r?\n\r?\n/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      const worktree = {
-        path: "",
-        head: "",
-        branch: undefined,
-        detached: false,
-      };
-
-      for (const line of block.split(/\r?\n/)) {
-        if (line.startsWith("worktree ")) {
-          worktree.path = path.normalize(line.slice("worktree ".length));
-        } else if (line.startsWith("HEAD ")) {
-          worktree.head = line.slice("HEAD ".length);
-        } else if (line.startsWith("branch ")) {
-          const ref = line.slice("branch ".length);
-          worktree.branch = ref.startsWith("refs/heads/")
-            ? ref.slice("refs/heads/".length)
-            : ref;
-        } else if (line === "detached") {
-          worktree.detached = true;
-        }
-      }
-
-      return worktree;
-    })
-    .filter((worktree) => worktree.path);
-}
-
 function parseNameStatus(output) {
   const tokens = output.split("\0").filter(Boolean);
   const files = [];
@@ -218,10 +185,6 @@ function normalizeFsPath(filePath, platform = process.platform) {
   return platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
-function shortSha(sha) {
-  return sha ? sha.slice(0, 7) : undefined;
-}
-
 function trimTrailingNewline(value) {
   return value.replace(/[\r\n]+$/, "");
 }
@@ -243,9 +206,7 @@ module.exports = {
   normalizeFsPath,
   parseNameStatus,
   parseUntrackedFiles,
-  parseWorktreeList,
   relativePathFromRoot,
-  shortSha,
   statusInfo,
   trimTrailingNewline,
 };

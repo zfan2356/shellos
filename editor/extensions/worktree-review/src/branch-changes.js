@@ -8,12 +8,12 @@ const {
 
 const AUTO_BASE_REF = "auto";
 const FALLBACK_BASE_REFS = [
+  "dev",
+  "origin/dev",
   "origin/main",
   "main",
   "origin/master",
   "master",
-  "origin/dev",
-  "dev",
 ];
 
 async function collectBranchChanges(git, repoRoot, baseRef, headRef = "HEAD") {
@@ -84,6 +84,15 @@ async function resolveBranchBase(git, repoRoot, configuredRef = AUTO_BASE_REF) {
     };
   }
 
+  for (const ref of FALLBACK_BASE_REFS.slice(0, 2)) {
+    if (await canResolveCommit(git, repoRoot, ref)) {
+      return {
+        ref,
+        source: "dev",
+      };
+    }
+  }
+
   try {
     const remoteDefault = await git.run(repoRoot, [
       "symbolic-ref",
@@ -101,7 +110,7 @@ async function resolveBranchBase(git, repoRoot, configuredRef = AUTO_BASE_REF) {
     // Fall through to conventional branch names.
   }
 
-  for (const ref of FALLBACK_BASE_REFS) {
+  for (const ref of FALLBACK_BASE_REFS.slice(2)) {
     if (await canResolveCommit(git, repoRoot, ref)) {
       return {
         ref,

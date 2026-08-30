@@ -1,8 +1,8 @@
 {
   "name": "worktree-review",
   "displayName": "Worktree Review",
-  "description": "Review cumulative branch changes and Git worktree branches without rewriting repository state.",
-  "version": "0.3.4",
+  "description": "Review the current Git branch against its merge base with a selected base branch.",
+  "version": "0.4.0",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -33,22 +33,7 @@
   ],
   "main": "./src/extension.js",
   "activationEvents": [
-    "onStartupFinished",
-    "onView:worktreeReview.sidebar.changes",
-    "onView:worktreeReview.sidebar.worktrees",
-    "onCommand:worktreeReview.refresh",
-    "onCommand:worktreeReview.refreshBranchChanges",
-    "onCommand:worktreeReview.selectBranchBaseRef",
-    "onCommand:worktreeReview.toggleBranchChanges",
-    "onCommand:worktreeReview.selectBaseRef",
-    "onCommand:worktreeReview.selectWorktree",
-    "onCommand:worktreeReview.useSideBySideDiff",
-    "onCommand:worktreeReview.useSourceView",
-    "onCommand:worktreeReview.toggleReview",
-    "onCommand:worktreeReview.openCurrentFileReview",
-    "onCommand:worktreeReview.openChangedFile",
-    "onCommand:worktreeReview.focusReview",
-    "onCommand:worktreeReview.copyWorktreePath"
+    "onStartupFinished"
   ],
   "contributes": {
     "configuration": {
@@ -62,7 +47,7 @@
         "worktreeReview.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically open base-versus-worktree diffs from Explorer and decorate changed files."
+          "description": "Keep the current branch review open and decorate changed files. Disabling it closes the review tab."
         },
         "worktreeReview.diffLayout": {
           "type": "string",
@@ -71,16 +56,11 @@
             "source"
           ],
           "enumDescriptions": [
-            "Show base and worktree in separate columns.",
-            "Open the editable worktree source file with gutter change markers."
+            "Show the base and current branch in separate columns.",
+            "Open the editable current-branch file with gutter change markers."
           ],
           "default": "sideBySide",
-          "description": "Presentation used when opening files from Worktree Review."
-        },
-        "worktreeReview.includeCurrentWorktree": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show the current workspace worktree in the review list."
+          "description": "Presentation used when opening changed files."
         },
         "worktreeReview.branchChanges.enabled": {
           "type": "boolean",
@@ -91,17 +71,11 @@
           "type": "string",
           "default": "auto",
           "scope": "resource",
-          "description": "Base ref whose merge base with HEAD is used for cumulative branch changes. Use auto to prefer origin/HEAD, then conventional main, master, or dev refs."
+          "description": "Base ref whose merge base with HEAD starts the comparison. Auto prefers dev, then origin/dev, the remote default branch, main, or master."
         }
       }
     },
     "commands": [
-      {
-        "command": "worktreeReview.refresh",
-        "title": "Refresh",
-        "category": "Worktree Review",
-        "icon": "$(refresh)"
-      },
       {
         "command": "worktreeReview.refreshBranchChanges",
         "title": "Refresh Branch Changes",
@@ -110,27 +84,9 @@
       },
       {
         "command": "worktreeReview.selectBranchBaseRef",
-        "title": "Select Branch Base Ref",
-        "category": "Worktree Review",
-        "icon": "$(git-compare)"
-      },
-      {
-        "command": "worktreeReview.toggleBranchChanges",
-        "title": "Toggle Branch Changes",
-        "category": "Worktree Review",
-        "icon": "$(git-compare)"
-      },
-      {
-        "command": "worktreeReview.selectBaseRef",
         "title": "Select Base Branch",
         "category": "Worktree Review",
-        "icon": "$(git-branch)"
-      },
-      {
-        "command": "worktreeReview.selectWorktree",
-        "title": "Select Worktree",
-        "category": "Worktree Review",
-        "icon": "$(git-branch)"
+        "icon": "$(git-compare)"
       },
       {
         "command": "worktreeReview.useSideBySideDiff",
@@ -146,7 +102,7 @@
       },
       {
         "command": "worktreeReview.toggleReview",
-        "title": "Toggle Automatic Review",
+        "title": "Open/Close Review",
         "category": "Worktree Review",
         "icon": "$(power)"
       },
@@ -155,47 +111,8 @@
         "title": "Open Current File Review",
         "category": "Worktree Review",
         "icon": "$(diff)"
-      },
-      {
-        "command": "worktreeReview.openChangedFile",
-        "title": "Open Changed File",
-        "category": "Worktree Review",
-        "icon": "$(list-selection)"
-      },
-      {
-        "command": "worktreeReview.focusReview",
-        "title": "Open Worktree Review",
-        "category": "Worktree Review",
-        "icon": "$(git-branch)"
-      },
-      {
-        "command": "worktreeReview.copyWorktreePath",
-        "title": "Copy Worktree Path",
-        "category": "Worktree Review",
-        "icon": "$(copy)"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "worktreeReview",
-          "title": "Worktree Review",
-          "icon": "resources/worktree-review.svg"
-        }
-      ]
-    },
-    "views": {
-      "worktreeReview": [
-        {
-          "id": "worktreeReview.sidebar.changes",
-          "name": "Changes"
-        },
-        {
-          "id": "worktreeReview.sidebar.worktrees",
-          "name": "Worktrees"
-        }
-      ]
-    },
     "menus": {
       "scm/title": [
         {
@@ -209,67 +126,6 @@
           "group": "navigation@2"
         }
       ],
-      "view/title": [
-        {
-          "command": "worktreeReview.refresh",
-          "when": "view == worktreeReview.sidebar.changes",
-          "group": "navigation"
-        },
-        {
-          "command": "worktreeReview.openChangedFile",
-          "when": "view == worktreeReview.sidebar.changes",
-          "group": "navigation"
-        },
-        {
-          "command": "worktreeReview.refresh",
-          "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation"
-        },
-        {
-          "command": "worktreeReview.selectBaseRef",
-          "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation"
-        },
-        {
-          "command": "worktreeReview.useSideBySideDiff",
-          "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation@3"
-        },
-        {
-          "command": "worktreeReview.useSourceView",
-          "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation@4"
-        },
-        {
-          "command": "worktreeReview.toggleReview",
-          "when": "view == worktreeReview.sidebar.worktrees",
-          "group": "navigation@5"
-        }
-      ],
-      "editor/title": [
-        {
-          "command": "worktreeReview.focusReview",
-          "when": "resourceScheme == file",
-          "group": "navigation@99"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "worktreeReview.selectBaseRef",
-          "when": "view == worktreeReview.sidebar.worktrees && viewItem == repo",
-          "group": "navigation"
-        },
-        {
-          "command": "worktreeReview.selectWorktree",
-          "when": "view == worktreeReview.sidebar.worktrees && (viewItem == worktree || viewItem == worktreeActive)",
-          "group": "inline"
-        },
-        {
-          "command": "worktreeReview.copyWorktreePath",
-          "when": "view == worktreeReview.sidebar.worktrees && (viewItem == worktree || viewItem == worktreeActive)",
-          "group": "navigation"
-        }
-      ],
       "explorer/context": [
         {
           "command": "worktreeReview.openCurrentFileReview",
@@ -279,62 +135,18 @@
       ],
       "commandPalette": [
         {
-          "command": "worktreeReview.refresh",
-          "when": "false"
-        },
-        {
           "command": "worktreeReview.refreshBranchChanges",
           "when": "false"
         },
         {
-          "command": "worktreeReview.selectBranchBaseRef",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.toggleBranchChanges",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.selectWorktree",
-          "when": "false"
-        },
-        {
           "command": "worktreeReview.openCurrentFileReview",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.openChangedFile",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.focusReview",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.copyWorktreePath",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.sidebar.changes.focus",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.sidebar.worktrees.focus",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.changes.focus",
-          "when": "false"
-        },
-        {
-          "command": "worktreeReview.worktrees.focus",
           "when": "false"
         }
       ]
     }
   },
   "scripts": {
-    "lint": "node --check src/extension.js && node --check src/branch-changes.js && node --check src/branch-review-scm.js && node --check src/git-utils.js && node --check src/view-ids.js && node --check test/branch-changes.test.js && node --check test/git-utils.test.js && node --check test/manifest.test.js",
+    "lint": "node --check src/extension.js && node --check src/branch-changes.js && node --check src/branch-review-scm.js && node --check src/git-utils.js && node --check test/branch-changes.test.js && node --check test/git-utils.test.js && node --check test/manifest.test.js",
     "test": "node --test test/*.test.js",
     "check": "npm run lint && npm test",
     "package:vsix": "bash scripts/package-vsix.sh"
