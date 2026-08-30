@@ -78,7 +78,6 @@ cp "$REPO/scripts/install-tode-release.sh" "$work/install-tode-release.sh"
 cp "$REPO/scripts/apply-tode-patches.sh" "$work/apply-tode-patches.sh"
 cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
 cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
-cp "$REPO/scripts/download-marketplace-vsix.sh" "$work/download-marketplace-vsix.sh"
 printf "TODE_REMOTE_SSH_HOST='%s'\nTODE_REMOTE_PORT='%s'\nTODE_REMOTE_SHELL='%s'\n" \
   "$SSH_HOST" "$PORT" "$remote_shell" > "$work/remote-tode.env"
 
@@ -88,8 +87,7 @@ remote_work=$(ssh "$SSH_HOST" 'mktemp -d /tmp/shellos-remote-tode.XXXXXX')
 scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt" \
   "$work/tode-remote-wrapper" "$work/install-tode-release.sh" \
   "$work/apply-tode-patches.sh" "$work/patch-terminal-browser.sh" \
-  "$work/patch-tode-cmd-right-click.sh" "$work/download-marketplace-vsix.sh" \
-  "$work/remote-tode.env" \
+  "$work/patch-tode-cmd-right-click.sh" "$work/remote-tode.env" \
   "$SSH_HOST:$remote_work/"
 
 ssh "$SSH_HOST" bash -s -- "$remote_work" "$PORT" "$TODE_PIN" <<'REMOTE'
@@ -112,8 +110,7 @@ for file in "$bin_dir/tode" "$user_dir/settings.json" "$user_dir/keybindings.jso
 done
 
 chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
-  "$staging/patch-terminal-browser.sh" "$staging/patch-tode-cmd-right-click.sh" \
-  "$staging/download-marketplace-vsix.sh"
+  "$staging/patch-terminal-browser.sh" "$staging/patch-tode-cmd-right-click.sh"
 if [[ -x "$bin_dir/tode" ]]; then
   "$bin_dir/tode" --shutdown >/dev/null 2>&1 || true
 fi
@@ -140,12 +137,10 @@ REMOTE
 
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-worktree-review.sh" "$SSH_HOST"
 
-ssh "$SSH_HOST" bash -s -- "$remote_work/extensions.tode.txt" "$TODE_PIN" \
-  "$remote_work/download-marketplace-vsix.sh" <<'REMOTE_VERIFY'
+ssh "$SSH_HOST" bash -s -- "$remote_work/extensions.tode.txt" "$TODE_PIN" <<'REMOTE_VERIFY'
 set -euo pipefail
 inventory=$1
 tode_pin=$2
-marketplace_downloader=$3
 code_server=$(find "$HOME/.local/share/tode/code-server" -type f \
   -path '*/bin/code-server' -perm -111 2>/dev/null | sort -V | tail -n 1)
 [[ -n "$code_server" ]] || { echo "remote code-server not found" >&2; exit 1; }
@@ -169,29 +164,13 @@ while IFS= read -r extension; do
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
     --uninstall-extension "$extension" || true
 done <<< "$current"
-case "$(uname -m)" in
-  x86_64|amd64) marketplace_platform=linux-x64 ;;
-  aarch64|arm64) marketplace_platform=linux-arm64 ;;
-  *) echo "unsupported paired-host architecture: $(uname -m)" >&2; exit 1 ;;
-esac
-extension_work=$(mktemp -d /tmp/shellos-remote-extensions.XXXXXX)
-cleanup_extension_work() {
-  case "$extension_work" in /tmp/shellos-remote-extensions.*) rm -rf -- "$extension_work" ;; esac
-}
-trap cleanup_extension_work EXIT
 while IFS= read -r extension; do
   [[ -n "$extension" ]] || continue
   [[ "$extension" == zfan2356.worktree-review ]] && continue
-  install_source=$extension
-  if [[ "$extension" == openai.chatgpt ]]; then
-    install_source="$extension_work/openai.chatgpt.vsix"
-    SHELLOS_FULL_REINSTALL=1 \
-      "$marketplace_downloader" "$extension" "$marketplace_platform" "$install_source"
-  fi
   "$code_server" \
     --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
-    --install-extension "$install_source" --force
+    --install-extension "$extension" --force
 done < "$inventory"
 current=$(
   "$code_server" \

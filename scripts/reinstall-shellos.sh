@@ -171,21 +171,9 @@ while IFS= read -r extension; do
   tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
 export EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":""}'
-extension_work=$(mktemp -d /tmp/shellos-local-extensions.XXXXXX)
-cleanup_extension_work() {
-  case "$extension_work" in /tmp/shellos-local-extensions.*) rm -rf -- "$extension_work" ;; esac
-}
-trap cleanup_extension_work EXIT
 while IFS= read -r extension; do
   [[ -n "$extension" && "$extension" != zfan2356.worktree-review ]] || continue
-  if [[ "$extension" == openai.chatgpt ]]; then
-    vsix="$extension_work/openai.chatgpt.vsix"
-    SHELLOS_FULL_REINSTALL=1 \
-      "$REPO/scripts/download-marketplace-vsix.sh" "$extension" darwin-arm64 "$vsix"
-    tode --install-extension "$vsix"
-  else
-    tode --install-extension "$extension"
-  fi
+  tode --install-extension "$extension"
 done < "$REPO/editor/extensions.tode.txt"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-worktree-review.sh"
 

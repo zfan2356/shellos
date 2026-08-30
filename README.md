@@ -50,7 +50,6 @@ contain implementation patches or configuration variants.
 | `scripts/patch-terminal-browser.sh` | Tracked renderer patch, applied only during full reinstall |
 | `scripts/patch-tode-cmd-right-click.sh` | Tracked navigation patch, applied only during full reinstall |
 | `scripts/install-worktree-review.sh` | Internal extension build/install helper |
-| `scripts/download-marketplace-vsix.sh` | Internal official Marketplace VSIX downloader |
 | `scripts/deploy-remote-tode.sh` | Internal complete remote reinstall helper |
 | `scripts/sync.sh` | Disabled compatibility stop; machine-to-repo sync is forbidden |
 | `skills/` | Agent procedures enforcing this policy |

@@ -51,8 +51,7 @@ compatibility port, and login shell are written to the remote-only
 not behavior or patch logic.
 
 Internal scripts such as `deploy-remote-tode.sh`,
-`install-worktree-review.sh`, `download-marketplace-vsix.sh`, and
-`patch-terminal-browser.sh` deliberately
+`install-worktree-review.sh` and `patch-terminal-browser.sh` deliberately
 reject direct invocation.
 
 ## Usage

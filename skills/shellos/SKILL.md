@@ -81,9 +81,9 @@ installed result in place.
   scripts/docs if needed, commit, push, pull, and full reinstall all succeed.
 - Internal helpers (`link.sh`, `install-tode-release.sh`,
   `apply-tode-patches.sh`, both `patch-*.sh` scripts,
-  `install-worktree-review.sh`, `download-marketplace-vsix.sh`,
-  `assert-repo-first.sh`, and `deploy-remote-tode.sh`) are implementation details of
-  `reinstall-shellos.sh`; do not invoke them directly or bypass their guard.
+  `install-worktree-review.sh`, `assert-repo-first.sh`, and
+  `deploy-remote-tode.sh`) are implementation details of `reinstall-shellos.sh`;
+  do not invoke them directly or bypass their guard.
 
 ## Knowledge changes
 
