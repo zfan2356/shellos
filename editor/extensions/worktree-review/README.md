@@ -42,10 +42,12 @@ gutter change markers. A deleted file always uses the diff editor because no
 source file remains.
 
 Clicking a file in the `Branch Changes` SCM group opens it in the active layout.
-In ShellOS/Tode, a tracked Explorer pre-open hook intercepts decorated changed
-files while Review is enabled, so the selected Review view opens directly and
-the ordinary source editor never flashes first. Other editors use the extension
-listener as a compatibility fallback.
+In ShellOS/Tode, a tracked Explorer pre-open hook asks the extension to resolve
+a decorated changed file into its base/current URI pair. Explorer then opens
+that pair as one Diff editor input, so no source editor is created or closed in
+between. The resolver waits for initial and pending Git refreshes before it
+decides whether a file changed. Other editors use the extension listener as a
+compatibility fallback.
 
 ## Usage
 

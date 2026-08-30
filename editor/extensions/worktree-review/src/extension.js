@@ -71,9 +71,9 @@ async function activate(context) {
       presentation.openCurrentFileReview()
     ),
     vscode.commands.registerCommand(
-      "worktreeReview.interceptExplorerOpen",
+      "worktreeReview.resolveExplorerOpen",
       (uri, editorOptions) =>
-        presentation.interceptExplorerOpen(uri, editorOptions)
+        presentation.resolveExplorerOpen(uri, editorOptions)
     )
   );
 
@@ -415,11 +415,24 @@ class ReviewPresentationController {
     }
 
     const document = editor.document;
-    if (
-      !document ||
-      document.uri.scheme !== "file" ||
-      this.isActiveReviewDiffDocument(document.uri)
-    ) {
+    if (!document) {
+      return;
+    }
+
+    if (this.isActiveReviewDiffDocument(document.uri)) {
+      const tabGroups = vscode.window.tabGroups;
+      const activeTab = tabGroups && tabGroups.activeTabGroup.activeTab;
+      const targetUri =
+        activeTab && activeTab.input && this.reviewTargetUri(activeTab.input);
+      const target = targetUri && this.branchScm.findChangeForUri(targetUri);
+      if (target) {
+        this.currentTarget = target;
+        this.reviewTab = activeTab;
+      }
+      return;
+    }
+
+    if (document.uri.scheme !== "file") {
       return;
     }
 
@@ -462,22 +475,27 @@ class ReviewPresentationController {
     await this.enableAndOpenTarget(target);
   }
 
-  async interceptExplorerOpen(uri, editorOptions = {}) {
+  async resolveExplorerOpen(uri, editorOptions = {}) {
     if (!this.enabled || !uri || uri.scheme !== "file") {
-      return false;
+      return undefined;
     }
 
-    const target = this.branchScm.findChangeForUri(uri);
+    const target = await this.branchScm.resolveChangeForUri(uri);
     if (!target) {
-      return false;
+      return undefined;
+    }
+    if (this.diffLayout === "source" && target.file.statusKind !== "D") {
+      this.currentTarget = target;
+      return undefined;
     }
 
-    await this.openTarget(target, {
+    this.currentTarget = target;
+    return {
+      ...this.branchScm.makeDiffEditorInput(target),
       preview: editorOptions.pinned !== true,
       preserveFocus: editorOptions.preserveFocus === true,
       sideBySide: editorOptions.sideBySide === true,
-    });
-    return true;
+    };
   }
 
   async enableAndOpenTarget(target) {

@@ -84,28 +84,63 @@ test("the toggle actively opens and closes the review", () => {
   assert.match(source, /statusBar\.command = "worktreeReview\.toggleReview"/);
 });
 
-test("Explorer opens changed files through the pre-open review hook", () => {
+test("Explorer resolves changed files into one atomic diff open", () => {
   const extensionSource = fs.readFileSync(
     path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+  const scmSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "branch-review-scm.js"),
+    "utf8"
+  );
+  const patchSource = fs.readFileSync(
+    path.join(
+      __dirname,
+      "..",
+      "..",
+      "..",
+      "..",
+      "scripts",
+      "patch-tode-worktree-review-click.sh"
+    ),
     "utf8"
   );
 
   assert.ok(
     manifest.activationEvents.includes(
-      "onCommand:worktreeReview.interceptExplorerOpen"
+      "onCommand:worktreeReview.resolveExplorerOpen"
     )
   );
   assert.match(
     extensionSource,
-    /registerCommand\([\s\S]*?"worktreeReview\.interceptExplorerOpen"/
+    /registerCommand\([\s\S]*?"worktreeReview\.resolveExplorerOpen"/
   );
   assert.match(
     extensionSource,
-    /async interceptExplorerOpen\(uri, editorOptions = \{\}\)[\s\S]*?findChangeForUri\(uri\)[\s\S]*?return true/
+    /async resolveExplorerOpen\(uri, editorOptions = \{\}\)[\s\S]*?resolveChangeForUri\(uri\)[\s\S]*?makeDiffEditorInput\(target\)/
+  );
+  assert.match(scmSource, /"_workbench\.diff"[\s\S]*?\[viewColumn, editorOptions\]/);
+  assert.doesNotMatch(scmSource, /"vscode\.diff"/);
+  assert.match(patchSource, /Explorer atomic diff v2/);
+  assert.match(
+    patchSource,
+    /original:\{resource:shellosReviewInput\.original\}[\s\S]*?modified:\{resource:shellosReviewInput\.modified\}/
   );
   assert.match(
     extensionSource,
     /openTarget\(target, options = \{\}\)[\s\S]*?this\.openQueue\.then/
+  );
+});
+
+test("Explorer resolution waits for initial and scheduled change refreshes", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "branch-review-scm.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /async resolveChangeForUri\(uri\)[\s\S]*?await this\.syncPromise[\s\S]*?entry\.timer[\s\S]*?await this\.refreshEntry\(entry\)[\s\S]*?entry\.refreshPromise/
   );
 });
 
@@ -165,8 +200,6 @@ test("source mode opens files directly while deleted files keep an empty right s
     source,
     /layout === "source"[\s\S]*?file\.statusKind !== "D"[\s\S]*?showTextDocument/
   );
-  assert.match(
-    source,
-    /file\.statusKind === "D"[\s\S]*?makeEmptyUri[\s\S]*?vscode\.commands\.executeCommand\(\s*"vscode\.diff"/
-  );
+  assert.match(source, /file\.statusKind === "D"[\s\S]*?makeEmptyUri/);
+  assert.match(source, /"_workbench\.diff"/);
 });

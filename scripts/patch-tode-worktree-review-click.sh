@@ -37,9 +37,9 @@ fi
 "$NODE" - "$WORKBENCH" "$MODE" <<'JS'
 const fs = require("fs");
 const [target, mode] = process.argv.slice(2);
-const mark = "/* shellos: worktree-review Explorer pre-open v1 */";
+const mark = "/* shellos: worktree-review Explorer atomic diff v2 */";
 const anchor = 'this.delegate?.willOpenElement(c.browserEvent),await this.editorService.openEditor({resource:l.resource,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}},c.sideBySide?Kn:cr)';
-const replacement = 'this.delegate?.willOpenElement(c.browserEvent);' + mark + 'let shellosReviewHandled=!1;try{shellosReviewHandled=await this.commandService.executeCommand("worktreeReview.interceptExplorerOpen",l.resource,{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,sideBySide:c.sideBySide})===!0}catch{}if(!shellosReviewHandled)await this.editorService.openEditor({resource:l.resource,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}},c.sideBySide?Kn:cr)';
+const replacement = 'this.delegate?.willOpenElement(c.browserEvent);' + mark + 'let shellosReviewInput;try{shellosReviewInput=await this.commandService.executeCommand("worktreeReview.resolveExplorerOpen",l.resource,{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,sideBySide:c.sideBySide})}catch{}let shellosEditorInput=shellosReviewInput?{original:{resource:shellosReviewInput.original},modified:{resource:shellosReviewInput.modified},label:shellosReviewInput.label,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}}:{resource:l.resource,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}};await this.editorService.openEditor(shellosEditorInput,c.sideBySide?Kn:cr)';
 
 function occurrences(source, needle) {
   return source.split(needle).length - 1;
@@ -52,8 +52,11 @@ function verify(source) {
   if (occurrences(source, anchor) !== 0) {
     throw new Error(`unpatched Explorer open path remains in ${target}`);
   }
-  if (occurrences(source, 'worktreeReview.interceptExplorerOpen') !== 1) {
-    throw new Error(`Worktree Review Explorer hook is missing or duplicated in ${target}`);
+  if (occurrences(source, 'worktreeReview.resolveExplorerOpen') !== 1) {
+    throw new Error(`Worktree Review Explorer resolver is missing or duplicated in ${target}`);
+  }
+  if (occurrences(source, 'original:{resource:shellosReviewInput.original}') !== 1) {
+    throw new Error(`Worktree Review atomic diff input is missing or duplicated in ${target}`);
   }
 }
 
@@ -62,13 +65,13 @@ const backup = `${target}.orig`;
 
 if (mode === "--check") {
   verify(source);
-  console.log(`verified Worktree Review Explorer pre-open patch: ${target}`);
+  console.log(`verified Worktree Review Explorer atomic diff patch: ${target}`);
   process.exit(0);
 }
 
 if (source.includes(mark) && mode !== "--reapply") {
   verify(source);
-  console.log(`Worktree Review Explorer pre-open patch already applied: ${target}`);
+  console.log(`Worktree Review Explorer atomic diff patch already applied: ${target}`);
   process.exit(0);
 }
 
@@ -94,5 +97,5 @@ if (count !== 1) {
 const patched = source.replace(anchor, replacement);
 verify(patched);
 fs.writeFileSync(target, patched);
-console.log(`patched Worktree Review Explorer pre-open: ${target}`);
+console.log(`patched Worktree Review Explorer atomic diff: ${target}`);
 JS

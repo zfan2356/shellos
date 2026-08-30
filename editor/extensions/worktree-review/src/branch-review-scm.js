@@ -164,9 +164,25 @@ class BranchReviewScmController {
       return;
     }
 
+    const diff = this.makeDiffEditorInput(target);
+    const viewColumn = options.sideBySide
+      ? vscode.ViewColumn.Beside
+      : undefined;
+
+    await vscode.commands.executeCommand(
+      "_workbench.diff",
+      diff.original,
+      diff.modified,
+      diff.label,
+      [viewColumn, editorOptions]
+    );
+  }
+
+  makeDiffEditorInput(target) {
+    const file = target.file;
     const leftPath = file.oldPath || file.path;
     const rightPath = file.path;
-    const leftUri =
+    const original =
       file.statusKind === "A"
         ? this.uriFactory.makeEmptyUri(
             target.repoRoot,
@@ -178,7 +194,7 @@ class BranchReviewScmController {
             file.compareBaseRef,
             leftPath
           );
-    const rightUri =
+    const modified =
       file.statusKind === "D"
         ? this.uriFactory.makeEmptyUri(
             target.repoRoot,
@@ -188,15 +204,12 @@ class BranchReviewScmController {
         : vscode.Uri.file(
             path.join(target.repoRoot, ...rightPath.split("/"))
           );
-    const title = `${statusInfo(file.statusKind).badge} ${rightPath} (${target.baseRef}...${target.currentRef})`;
 
-    await vscode.commands.executeCommand(
-      "vscode.diff",
-      leftUri,
-      rightUri,
-      title,
-      editorOptions
-    );
+    return {
+      original,
+      modified,
+      label: `${statusInfo(file.statusKind).badge} ${rightPath} (${target.baseRef}...${target.currentRef})`,
+    };
   }
 
   getEntries() {
@@ -236,6 +249,47 @@ class BranchReviewScmController {
     }
 
     return undefined;
+  }
+
+  async resolveChangeForUri(uri) {
+    if (!uri || uri.scheme !== "file") {
+      return undefined;
+    }
+
+    await this.syncPromise.catch(() => undefined);
+    let entry = this.findEntryForUri(uri);
+    if (!entry) {
+      await this.synchronizeRepositories();
+      entry = this.findEntryForUri(uri);
+    }
+    if (!entry) {
+      return undefined;
+    }
+
+    if (entry.timer) {
+      clearTimeout(entry.timer);
+      entry.timer = undefined;
+      await this.refreshEntry(entry);
+    } else if (entry.refreshPromise) {
+      await entry.refreshPromise;
+    }
+
+    let target = this.findChangeForUri(uri);
+    if (!target) {
+      await this.refreshEntry(entry);
+      target = this.findChangeForUri(uri);
+    }
+    return target;
+  }
+
+  findEntryForUri(uri) {
+    if (!uri || uri.scheme !== "file") {
+      return undefined;
+    }
+
+    return this.getEntries()
+      .sort((left, right) => right.repoRoot.length - left.repoRoot.length)
+      .find((entry) => relativePathFromRoot(entry.repoRoot, uri.fsPath));
   }
 
   findChangedFolderForUri(uri) {
@@ -368,6 +422,7 @@ class BranchReviewScmController {
       filesByPath: new Map(),
       group,
       headCommit: "HEAD",
+      refreshPromise: undefined,
       refreshToken: 0,
       repoRoot,
       sourceControl,
@@ -380,7 +435,19 @@ class BranchReviewScmController {
     return entry;
   }
 
-  async refreshEntry(entry, showErrors = false) {
+  refreshEntry(entry, showErrors = false) {
+    const operation = this.doRefreshEntry(entry, showErrors);
+    entry.refreshPromise = operation;
+    const clear = () => {
+      if (entry.refreshPromise === operation) {
+        entry.refreshPromise = undefined;
+      }
+    };
+    operation.then(clear, clear);
+    return operation;
+  }
+
+  async doRefreshEntry(entry, showErrors = false) {
     const refreshToken = ++entry.refreshToken;
     const configuredBaseRef =
       entry.baseOverride || this.getConfiguredBaseRef(entry.repoRoot);

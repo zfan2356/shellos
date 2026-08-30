@@ -230,7 +230,7 @@ workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
   -path '*/lib/vscode/out/vs/workbench/workbench.web.main.internal.js' \
   2>/dev/null | sort -V | tail -n 1)
 [[ -n "$workbench_bundle" ]]
-grep -Fq 'shellos: worktree-review Explorer pre-open v1' "$workbench_bundle"
+grep -Fq 'shellos: worktree-review Explorer atomic diff v2' "$workbench_bundle"
 REMOTE_VERIFY
 echo "deployed remote tode via $SSH_HOST"
 echo "remote shell: $remote_shell"
