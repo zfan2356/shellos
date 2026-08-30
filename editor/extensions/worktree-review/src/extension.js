@@ -157,6 +157,7 @@ class ReviewPresentationController {
     this.openQueue = Promise.resolve();
     this.currentTarget = undefined;
     this.reviewTab = undefined;
+    this.reviewSourceUri = undefined;
     this.updatingConfiguration = false;
     this.readConfiguration();
   }
@@ -410,19 +411,20 @@ class ReviewPresentationController {
       }
     }
 
-    if (this.diffLayout === "source" && this.currentTarget) {
-      const activeTab = tabGroups.activeTabGroup.activeTab;
-      const input = activeTab && activeTab.input;
-      const targetUri = vscode.Uri.file(
-        path.join(
-          this.currentTarget.repoRoot,
-          ...this.currentTarget.file.path.split("/")
-        )
-      );
-      if (input && input.uri && uriEquals(input.uri, targetUri)) {
-        tabsToClose.add(activeTab);
+    if (this.reviewSourceUri) {
+      for (const group of tabGroups.all) {
+        for (const tab of group.tabs) {
+          if (
+            tab.input &&
+            tab.input.uri &&
+            uriEquals(tab.input.uri, this.reviewSourceUri)
+          ) {
+            tabsToClose.add(tab);
+          }
+        }
       }
     }
+    this.reviewSourceUri = undefined;
 
     const openTabs = [...tabsToClose].filter((tab) =>
       tabGroups.all.some((group) => group.tabs.includes(tab))
@@ -494,6 +496,7 @@ class ReviewPresentationController {
     if (this.diffLayout === "source") {
       const tabGroups = vscode.window.tabGroups;
       this.reviewTab = tabGroups && tabGroups.activeTabGroup.activeTab;
+      this.reviewSourceUri = document.uri;
       return;
     }
 
@@ -569,19 +572,53 @@ class ReviewPresentationController {
   async doOpenTarget(target, options = {}) {
     this.openingReview = true;
     try {
-      const previousTab = this.reviewTab;
+      const tabGroups = vscode.window.tabGroups;
+      const previousTabs = new Set();
+      if (this.reviewTab) {
+        previousTabs.add(this.reviewTab);
+      }
+      if (this.reviewSourceUri) {
+        for (const group of tabGroups.all) {
+          for (const tab of group.tabs) {
+            if (
+              tab.input &&
+              tab.input.uri &&
+              uriEquals(tab.input.uri, this.reviewSourceUri)
+            ) {
+              previousTabs.add(tab);
+            }
+          }
+        }
+      }
+
+      const targetUri = vscode.Uri.file(
+        path.join(target.repoRoot, ...target.file.path.split("/"))
+      );
+      const activeTab = tabGroups && tabGroups.activeTabGroup.activeTab;
+      if (
+        activeTab &&
+        activeTab.input &&
+        activeTab.input.uri &&
+        uriEquals(activeTab.input.uri, targetUri)
+      ) {
+        previousTabs.add(activeTab);
+      }
+
       this.currentTarget = target;
       await this.branchScm.openChange(target, this.diffLayout, options);
-      const tabGroups = vscode.window.tabGroups;
       this.reviewTab = tabGroups && tabGroups.activeTabGroup.activeTab;
-      if (
-        previousTab &&
-        previousTab !== this.reviewTab &&
-        vscode.window.tabGroups.all.some((group) =>
-          group.tabs.includes(previousTab)
-        )
-      ) {
-        await vscode.window.tabGroups.close(previousTab, true);
+      this.reviewSourceUri =
+        this.diffLayout === "source" && target.file.statusKind !== "D"
+          ? targetUri
+          : undefined;
+
+      const openPreviousTabs = [...previousTabs].filter(
+        (tab) =>
+          tab !== this.reviewTab &&
+          tabGroups.all.some((group) => group.tabs.includes(tab))
+      );
+      if (openPreviousTabs.length > 0) {
+        await tabGroups.close(openPreviousTabs, true);
       }
     } finally {
       this.openingReview = false;

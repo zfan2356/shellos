@@ -63,6 +63,26 @@ test("review has exactly side-by-side and source layouts", () => {
   ]);
 });
 
+test("closing review disables the branch-relative Quick Diff provider", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "branch-review-scm.js"),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /affectsConfiguration\([\s\S]*?REVIEW_ENABLED_SETTING[\s\S]*?updateQuickDiffProviders\(\)/
+  );
+  assert.match(
+    source,
+    /updateQuickDiffProvider\(entry\)[\s\S]*?isReviewEnabled\(\)[\s\S]*?: undefined/
+  );
+  assert.match(
+    source,
+    /provideOriginalResource\(entry, uri\)[\s\S]*?!this\.isReviewEnabled\(\)/
+  );
+});
+
 test("the toggle actively opens and closes the review", () => {
   const source = fs.readFileSync(
     path.join(__dirname, "..", "src", "extension.js"),
@@ -79,7 +99,7 @@ test("the toggle actively opens and closes the review", () => {
   );
   assert.match(
     source,
-    /async closeReview\(\)[\s\S]*?input\.original\.scheme === GIT_BLOB_SCHEME[\s\S]*?this\.diffLayout === "source"[\s\S]*?uriEquals\(input\.uri, targetUri\)[\s\S]*?tabGroups\.close\(openTabs, true\)/
+    /async closeReview\(\)[\s\S]*?input\.original\.scheme === GIT_BLOB_SCHEME[\s\S]*?this\.reviewSourceUri[\s\S]*?uriEquals\(tab\.input\.uri, this\.reviewSourceUri\)[\s\S]*?tabGroups\.close\(openTabs, true\)/
   );
   assert.match(source, /statusBar\.command = "worktreeReview\.toggleReview"/);
 });
@@ -119,7 +139,10 @@ test("Explorer resolves changed files into one atomic diff open", () => {
     extensionSource,
     /async resolveExplorerOpen\(uri, editorOptions = \{\}\)[\s\S]*?resolveChangeForUri\(uri\)[\s\S]*?makeDiffEditorInput\(target\)/
   );
-  assert.match(scmSource, /"_workbench\.diff"[\s\S]*?\[viewColumn, editorOptions\]/);
+  assert.match(
+    scmSource,
+    /options\.sideBySide[\s\S]*?vscode\.ViewColumn\.Beside[\s\S]*?vscode\.ViewColumn\.Active[\s\S]*?"_workbench\.diff"[\s\S]*?\[viewColumn, editorOptions\]/
+  );
   assert.doesNotMatch(scmSource, /"vscode\.diff"/);
   assert.match(patchSource, /Explorer atomic diff v2/);
   assert.match(
@@ -129,6 +152,10 @@ test("Explorer resolves changed files into one atomic diff open", () => {
   assert.match(
     extensionSource,
     /openTarget\(target, options = \{\}\)[\s\S]*?this\.openQueue\.then/
+  );
+  assert.match(
+    extensionSource,
+    /async doOpenTarget\(target, options = \{\}\)[\s\S]*?previousTabs[\s\S]*?reviewSourceUri[\s\S]*?tabGroups\.close\(openPreviousTabs, true\)/
   );
 });
 

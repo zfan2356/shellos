@@ -34,7 +34,9 @@ the active changed file, the last reviewed file, or the first branch change.
 Selecting either layout also enables Review and immediately replaces the
 current Review editor; no separate open command, second file click, or trigger
 is needed. Closing Review immediately closes every Review diff editor and the
-source editor currently owned by Source View.
+source editor currently owned by Source View. It also removes the branch-relative
+gutter and overview-ruler markers; any remaining Git markers then represent real
+working-tree changes from the normal Git provider.
 
 The left-side status bar item is the primary open/close control and reports the
 current branch, base, and layout. Side-by-Side mode shows the base and current
@@ -61,7 +63,8 @@ compatibility fallback.
 
 ## Settings
 
-- `worktreeReview.enabled`: keep Review open and decorate changed files.
+- `worktreeReview.enabled`: keep Review open and decorate changed files in the
+  Explorer, editor gutter, and overview ruler.
 - `worktreeReview.diffLayout`: `sideBySide` or `source`. Existing `inline`
   values migrate to Source mode.
 - `worktreeReview.branchChanges.enabled`: show the read-only Branch Changes SCM

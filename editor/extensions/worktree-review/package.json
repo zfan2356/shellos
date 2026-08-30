@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review the current Git branch against its merge base with a selected base branch.",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -48,7 +48,7 @@
         "worktreeReview.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Keep the current branch review open and decorate changed files. Disabling it closes all editors opened by the review."
+          "description": "Keep the current branch review open and decorate changed files. Disabling it closes all editors opened by the review and removes branch-relative gutter markers."
         },
         "worktreeReview.diffLayout": {
           "type": "string",

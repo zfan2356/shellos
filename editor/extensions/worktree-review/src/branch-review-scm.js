@@ -18,6 +18,7 @@ const {
 
 const SOURCE_CONTROL_ID = "worktreeReview.branchChanges";
 const CONFIG_SECTION = "worktreeReview";
+const REVIEW_ENABLED_SETTING = "enabled";
 const ENABLED_SETTING = "branchChanges.enabled";
 const BASE_REF_SETTING = "branchChanges.baseRef";
 const OPEN_CHANGE_COMMAND = "worktreeReview.openBranchChange";
@@ -46,10 +47,16 @@ class BranchReviewScmController {
         const baseChanged = event.affectsConfiguration(
           `${CONFIG_SECTION}.${BASE_REF_SETTING}`
         );
+        const reviewChanged = event.affectsConfiguration(
+          `${CONFIG_SECTION}.${REVIEW_ENABLED_SETTING}`
+        );
         if (baseChanged) {
           for (const entry of this.entries.values()) {
             entry.baseOverride = undefined;
           }
+        }
+        if (reviewChanged) {
+          this.updateQuickDiffProviders();
         }
         if (
           baseChanged ||
@@ -167,7 +174,7 @@ class BranchReviewScmController {
     const diff = this.makeDiffEditorInput(target);
     const viewColumn = options.sideBySide
       ? vscode.ViewColumn.Beside
-      : undefined;
+      : vscode.ViewColumn.Active;
 
     await vscode.commands.executeCommand(
       "_workbench.diff",
@@ -428,11 +435,24 @@ class BranchReviewScmController {
       sourceControl,
       timer: undefined,
     };
-    sourceControl.quickDiffProvider = {
-      provideOriginalResource: (uri) => this.provideOriginalResource(entry, uri),
-    };
+    this.updateQuickDiffProvider(entry);
     this.updateEntryUi(entry);
     return entry;
+  }
+
+  updateQuickDiffProviders() {
+    for (const entry of this.entries.values()) {
+      this.updateQuickDiffProvider(entry);
+    }
+  }
+
+  updateQuickDiffProvider(entry) {
+    entry.sourceControl.quickDiffProvider = this.isReviewEnabled()
+      ? {
+          provideOriginalResource: (uri) =>
+            this.provideOriginalResource(entry, uri),
+        }
+      : undefined;
   }
 
   refreshEntry(entry, showErrors = false) {
@@ -538,7 +558,11 @@ class BranchReviewScmController {
   }
 
   provideOriginalResource(entry, uri) {
-    if (uri.scheme !== "file" || !entry.compareBaseRef) {
+    if (
+      !this.isReviewEnabled() ||
+      uri.scheme !== "file" ||
+      !entry.compareBaseRef
+    ) {
       return undefined;
     }
 
@@ -605,6 +629,12 @@ class BranchReviewScmController {
     return vscode.workspace
       .getConfiguration(CONFIG_SECTION)
       .get(ENABLED_SETTING, true);
+  }
+
+  isReviewEnabled() {
+    return vscode.workspace
+      .getConfiguration(CONFIG_SECTION)
+      .get(REVIEW_ENABLED_SETTING, true);
   }
 
   async getCurrentRef(repoRoot) {
