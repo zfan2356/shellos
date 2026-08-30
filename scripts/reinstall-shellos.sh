@@ -110,10 +110,14 @@ done
 echo "local backup: $BACKUP"
 
 if brew list --cask kitty >/dev/null 2>&1; then
-  brew reinstall --cask kitty
-else
-  brew install --cask kitty
+  brew uninstall --cask --force kitty
 fi
+if [[ -e /Applications/kitty.app ]]; then
+  mkdir -p "$BACKUP/apps"
+  mv /Applications/kitty.app "$BACKUP/apps/kitty.app"
+  echo "adopted unmanaged kitty app into $BACKUP/apps/kitty.app"
+fi
+brew install --cask kitty
 if brew list --cask font-maple-mono-nf-cn >/dev/null 2>&1; then
   brew reinstall --cask font-maple-mono-nf-cn
 else

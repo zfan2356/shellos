@@ -79,6 +79,11 @@ installed result in place.
 - Pin installed kitty and tode versions with `third-party/kitty` and
   `third-party/terminal-code`. A version upgrade is incomplete until the pin,
   scripts/docs if needed, commit, push, pull, and full reinstall all succeed.
+- A pre-existing `/Applications/kitty.app` may not have a matching Homebrew
+  cask receipt. Do not delete or overwrite it manually. The full installer
+  moves any unmanaged bundle into its timestamped backup before installing the
+  pinned cask, and the complete workflow must be restarted after such a
+  failure.
 - Internal helpers (`link.sh`, `install-tode-release.sh`,
   `apply-tode-patches.sh`, both `patch-*.sh` scripts,
   `install-worktree-review.sh`, `assert-repo-first.sh`, and

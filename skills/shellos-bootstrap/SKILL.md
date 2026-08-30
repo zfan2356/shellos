@@ -65,6 +65,10 @@ It then completely reinstalls the ShellOS-managed local environment:
 - the `shellos` and `shellos-bootstrap` skills from the formal checkout;
 - the remote launcher helper.
 
+If an existing kitty application is not owned by the Homebrew cask receipt,
+the installer first moves that bundle into the timestamped ShellOS backup and
+then installs the pinned cask; never remove the application manually.
+
 The same command always completely reinstalls the paired remote's pinned tode,
 tracked renderer patch, generated Linux editor configuration, exact extension
 inventory, Worktree Review, and remote wrapper. The installer refuses to run
