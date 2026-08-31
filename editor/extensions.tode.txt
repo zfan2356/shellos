@@ -1,4 +1,3 @@
-antfu.theme-vitesse
 chadalen.vscode-jetbrains-icon-theme
 detachhead.basedpyright
 eamodio.gitlens
