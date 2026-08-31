@@ -7,7 +7,6 @@ llvm-vs-code-extensions.vscode-clangd
 ms-azuretools.vscode-containers
 ms-python.python
 ms-python.vscode-python-envs
-ms-toolsai.jupyter-keymap
 ms-vscode-remote.remote-containers
 ms-vscode-remote.remote-ssh
 ms-vscode-remote.remote-ssh-edit
@@ -15,6 +14,5 @@ ms-vscode.cmake-tools
 ms-vscode.cpp-devtools
 ms-vscode.remote-explorer
 narasimapandiyan.jetbrainsmono
-rohitgorana.yaml-diff
 vscodevim.vim
 zfan2356.worktree-review
