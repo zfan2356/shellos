@@ -1,7 +1,6 @@
 chadalen.vscode-jetbrains-icon-theme
 detachhead.basedpyright
 eamodio.gitlens
-github.copilot
 isudox.vscode-jetbrains-keybindings
 llvm-vs-code-extensions.vscode-clangd
 ms-azuretools.vscode-containers
