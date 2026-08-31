@@ -3,9 +3,7 @@ detachhead.basedpyright
 eamodio.gitlens
 isudox.vscode-jetbrains-keybindings
 llvm-vs-code-extensions.vscode-clangd
-ms-azuretools.vscode-containers
 ms-python.python
-ms-python.vscode-python-envs
 ms-vscode.cmake-tools
 ms-vscode.cpp-devtools
 narasimapandiyan.jetbrainsmono
