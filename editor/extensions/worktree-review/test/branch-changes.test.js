@@ -157,7 +157,31 @@ test("resolveBranchBase uses an explicit configured ref", async () => {
   ]);
 });
 
-test("resolveBranchBase prefers local dev before the remote default branch", async () => {
+test("resolveBranchBase prefers origin/dev over a local dev", async () => {
+  const calls = [];
+  const git = {
+    async run(_repoRoot, args) {
+      calls.push(args);
+      if (args[0] === "rev-parse" && args[2] === "origin/dev^{commit}") {
+        return "origin-dev-commit";
+      }
+      if (args[0] === "rev-parse" && args[2] === "dev^{commit}") {
+        return "local-dev-commit";
+      }
+      throw new Error(`Unexpected Git command: ${args.join(" ")}`);
+    },
+  };
+
+  assert.deepEqual(await resolveBranchBase(git, "/repo", AUTO_BASE_REF), {
+    ref: "origin/dev",
+    source: "dev",
+  });
+  assert.deepEqual(calls, [
+    ["rev-parse", "--verify", "origin/dev^{commit}"],
+  ]);
+});
+
+test("resolveBranchBase uses local dev when origin/dev is unavailable", async () => {
   const git = {
     async run(_repoRoot, args) {
       if (args[0] === "symbolic-ref") {
@@ -166,7 +190,7 @@ test("resolveBranchBase prefers local dev before the remote default branch", asy
       if (args[0] === "rev-parse" && args[2] === "dev^{commit}") {
         return "base-commit";
       }
-      throw new Error(`Unexpected Git command: ${args.join(" ")}`);
+      throw new Error("missing ref");
     },
   };
 
@@ -175,6 +199,7 @@ test("resolveBranchBase prefers local dev before the remote default branch", asy
     source: "dev",
   });
 });
+
 
 test("resolveBranchBase uses the remote default branch when dev is unavailable", async () => {
   const git = {
@@ -326,5 +351,65 @@ test("collectBranchChanges compares merge-base to the selected feature worktree"
       ["D", "base.txt"],
       ["A", "feature.txt"],
     ]
+  );
+});
+
+test("auto base uses origin/dev so a stale local dev is not the merge-base", async (t) => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "worktree-review-stale-dev-"));
+  t.after(() => fs.rmSync(repoRoot, { force: true, recursive: true }));
+
+  const runGit = (args) =>
+    cp.execFileSync("git", args, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).replace(/[\r\n]+$/, "");
+
+  runGit(["init", "-b", "dev"]);
+  runGit(["config", "user.email", "worktree-review@example.com"]);
+  runGit(["config", "user.name", "Worktree Review Test"]);
+  fs.writeFileSync(path.join(repoRoot, "base.txt"), "old dest\n");
+  runGit(["add", "base.txt"]);
+  runGit(["commit", "-m", "old dest"]);
+
+  fs.writeFileSync(path.join(repoRoot, "moved.txt"), "dest extra\n");
+  runGit(["add", "moved.txt"]);
+  runGit(["commit", "-m", "dest later change"]);
+  const snapshot = runGit(["rev-parse", "HEAD"]);
+
+  fs.writeFileSync(path.join(repoRoot, "newer.txt"), "current dest\n");
+  runGit(["add", "newer.txt"]);
+  runGit(["commit", "-m", "current dest"]);
+  const originDev = runGit(["rev-parse", "HEAD"]);
+  runGit(["update-ref", "refs/remotes/origin/dev", originDev]);
+
+  runGit(["branch", "snapshot", snapshot]);
+  runGit(["reset", "--hard", "HEAD~2"]);
+  runGit(["checkout", "snapshot"]);
+
+  const git = {
+    async run(cwd, args, options = {}) {
+      const output = cp.execFileSync("git", ["-C", cwd, ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      return options.trim === false
+        ? output
+        : output.replace(/[\r\n]+$/, "");
+    },
+  };
+
+  const resolved = await resolveBranchBase(git, repoRoot, AUTO_BASE_REF);
+  assert.deepEqual(resolved, { ref: "origin/dev", source: "dev" });
+
+  const againstOrigin = await collectBranchChanges(git, repoRoot, "origin/dev");
+  assert.equal(againstOrigin.compareBaseRef, snapshot);
+  assert.deepEqual(againstOrigin.files, []);
+
+  const againstLocal = await collectBranchChanges(git, repoRoot, "dev");
+  assert.equal(againstLocal.compareBaseRef, runGit(["rev-parse", "dev"]));
+  assert.deepEqual(
+    againstLocal.files.map((file) => [file.statusKind, file.path]),
+    [["A", "moved.txt"]]
   );
 });

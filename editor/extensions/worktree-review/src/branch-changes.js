@@ -7,9 +7,8 @@ const {
 } = require("./git-utils");
 
 const AUTO_BASE_REF = "auto";
+const DEV_BASE_REFS = ["origin/dev", "dev"];
 const FALLBACK_BASE_REFS = [
-  "dev",
-  "origin/dev",
   "origin/main",
   "main",
   "origin/master",
@@ -84,7 +83,7 @@ async function resolveBranchBase(git, repoRoot, configuredRef = AUTO_BASE_REF) {
     };
   }
 
-  for (const ref of FALLBACK_BASE_REFS.slice(0, 2)) {
+  for (const ref of DEV_BASE_REFS) {
     if (await canResolveCommit(git, repoRoot, ref)) {
       return {
         ref,
@@ -110,7 +109,7 @@ async function resolveBranchBase(git, repoRoot, configuredRef = AUTO_BASE_REF) {
     // Fall through to conventional branch names.
   }
 
-  for (const ref of FALLBACK_BASE_REFS.slice(2)) {
+  for (const ref of FALLBACK_BASE_REFS) {
     if (await canResolveCommit(git, repoRoot, ref)) {
       return {
         ref,
@@ -135,6 +134,7 @@ async function canResolveCommit(git, repoRoot, ref) {
 
 module.exports = {
   AUTO_BASE_REF,
+  DEV_BASE_REFS,
   FALLBACK_BASE_REFS,
   collectBranchChanges,
   findCompareBase,

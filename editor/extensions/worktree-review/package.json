@@ -2,7 +2,7 @@
   "name": "worktree-review",
   "displayName": "Worktree Review",
   "description": "Review the current Git branch against its merge base with a selected base branch.",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "publisher": "zfan2356",
   "license": "MIT",
   "repository": {
@@ -72,7 +72,7 @@
           "type": "string",
           "default": "auto",
           "scope": "resource",
-          "description": "Base ref whose merge base with HEAD starts the comparison. Auto prefers dev, then origin/dev, the remote default branch, main, or master."
+          "description": "Base ref whose merge base with HEAD starts the comparison. Auto prefers origin/dev, then dev, the remote default branch, main, or master."
         }
       }
     },

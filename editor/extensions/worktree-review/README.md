@@ -8,8 +8,10 @@ switching branches or rewriting repository state.
 
 The extension compares the current workspace, including committed, staged,
 unstaged, and untracked changes, with the nearest common ancestor of `HEAD` and
-the selected base branch. The default `auto` base prefers `dev`, then
-`origin/dev`, `origin/HEAD`, `main`, or `master`.
+the selected base branch. The default `auto` base prefers `origin/dev`, then
+`dev`, `origin/HEAD`, `main`, or `master`. This is `git diff <base>...HEAD`
+plus working-tree and untracked files. A stale local `dev` is not used when
+`origin/dev` exists.
 
 Changing branches with normal Git commands automatically refreshes the review.
 The extension has no worktree picker and never changes `HEAD` itself.
