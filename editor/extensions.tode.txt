@@ -14,5 +14,6 @@ ms-vscode.cmake-tools
 ms-vscode.cpp-devtools
 ms-vscode.remote-explorer
 narasimapandiyan.jetbrainsmono
+tamasfe.even-better-toml
 vscodevim.vim
 zfan2356.worktree-review
