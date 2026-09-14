@@ -78,6 +78,22 @@ The historical `scripts/tode-remote <ssh-host> [remote-path] [port]` launcher
 remains a tracked compatibility/debugging tool, but it is not an installation
 path.
 
+## Tabs and the ssh kitten
+
+Kitty's cwd-aware actions reconnect over ssh. From a window opened by the ssh
+kitten, `new_tab_with_cwd` and `new_window_with_cwd` relaunch the recorded ssh
+command on the same host at the same directory, so the canonical kitty config
+keeps them off the plain tab chord:
+
+- `⌘T` opens a local tab on the Mac, whichever host the active window is on.
+- `⌥⌘T` opens a tab on the active window's host and directory (the reconnect).
+- `⌃⇧D` splits keep the active window's host and directory for remote work.
+- `⌘W` closes the tab; `confirm_os_window_close -1` asks first while a command
+  (ssh counts) is still running, including when the last tab would quit kitty.
+
+With a cwd-inheriting `⌘T`, every new tab lands back in the remote session and
+the only route to a local shell is closing the tab that holds the session.
+
 ## Troubleshooting policy
 
 On old or headless Linux hosts, Electron may need glibc compatibility, sandbox,
