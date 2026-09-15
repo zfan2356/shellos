@@ -45,7 +45,9 @@ git pull --ff-only origin main
 The installer replaces the remote tode installation with the release pinned by
 `third-party/terminal-code`, reapplies every tracked Tode patch, renders the Linux
 form of canonical editor settings, restores the exact extension inventory and
-Worktree Review, and installs the tracked remote wrapper. The private alias,
+Worktree Review, and installs the tracked remote wrapper. It then installs the
+pinned dsh CLI and dsh-tui on the same host and writes the tracked harness
+configuration; see `docs/dsh-tui.md`. The private alias,
 compatibility port, and login shell are written to the remote-only
 `~/.config/shellos/remote-tode.env`; this file contains connection identity,
 not behavior or patch logic.

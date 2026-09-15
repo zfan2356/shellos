@@ -80,6 +80,7 @@ cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
 cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
 cp "$REPO/scripts/patch-tode-worktree-review-click.sh" \
   "$work/patch-tode-worktree-review-click.sh"
+cp -R "$REPO/dsh" "$work/dsh"
 printf "TODE_REMOTE_SSH_HOST='%s'\nTODE_REMOTE_PORT='%s'\nTODE_REMOTE_SHELL='%s'\n" \
   "$SSH_HOST" "$PORT" "$remote_shell" > "$work/remote-tode.env"
 
@@ -92,6 +93,7 @@ scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt
   "$work/patch-tode-cmd-right-click.sh" \
   "$work/patch-tode-worktree-review-click.sh" "$work/remote-tode.env" \
   "$SSH_HOST:$remote_work/"
+scp -q -r "$work/dsh" "$SSH_HOST:$remote_work/"
 
 ssh "$SSH_HOST" bash -s -- "$remote_work" "$PORT" "$TODE_PIN" <<'REMOTE'
 set -euo pipefail
@@ -232,6 +234,68 @@ workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
 [[ -n "$workbench_bundle" ]]
 grep -Fq 'shellos: worktree-review Explorer atomic diff v2' "$workbench_bundle"
 REMOTE_VERIFY
+
+# dsh-tui rides the same deployment: pinned npm packages, the tracked dsh
+# configuration, and a verification that the profile really runs the pin.
+ssh "$SSH_HOST" bash -s -- "$remote_work" <<'REMOTE_DSH'
+set -euo pipefail
+staging=$1
+set -a
+# shellcheck source=/dev/null
+. "$staging/dsh/versions.env"
+set +a
+dsh_home="${DSH_HOME:-$HOME/.dsh}"
+chmod +x "$staging/dsh/install-dsh-tui.sh"
+"$staging/dsh/install-dsh-tui.sh" --dsh-home "$dsh_home"
+
+settings="$dsh_home/settings.yaml"
+profile_patch="$dsh_home/profiles/dsh-tui/cordis.patch.yml"
+plugin_manifest="$dsh_home/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/package.json"
+for file in "$settings" "$profile_patch" "$plugin_manifest"; do
+  [[ -f "$file" ]] || {
+    echo "remote dsh verification failed: missing $file" >&2
+    exit 1
+  }
+done
+cmp -s "$staging/dsh/settings.yaml" "$settings" || {
+  echo "remote dsh verification failed: $settings differs from the repository" >&2
+  exit 1
+}
+cmp -s "$staging/dsh/cordis.patch.yml" "$profile_patch" || {
+  echo "remote dsh verification failed: $profile_patch differs from the repository" >&2
+  exit 1
+}
+[[ "$(stat -c %a "$settings")" == 600 ]] || {
+  echo "remote dsh verification failed: $settings mode is not 600" >&2
+  exit 1
+}
+plugin_version=$(node -e '
+  const { readFileSync } = require("node:fs")
+  process.stdout.write(JSON.parse(readFileSync(process.argv[1], "utf8")).version ?? "")
+' "$plugin_manifest")
+[[ "$plugin_version" == "$DSH_TUI_VERSION" ]] || {
+  echo "remote dsh verification failed: profile has dsh-tui $plugin_version, expected $DSH_TUI_VERSION" >&2
+  exit 1
+}
+launcher="$HOME/.local/bin/dsh-tui"
+[[ -L "$launcher" ]] || {
+  echo "remote dsh verification failed: $launcher is not a symlink" >&2
+  exit 1
+}
+if command -v dsh-tui >/dev/null 2>&1 || [[ -x "$launcher" ]]; then
+  # A non-interactive ssh command does not always carry ~/.local/bin, so the
+  # doctor probe runs with the launcher directory forced onto PATH.
+  doctor_out="$(PATH="$HOME/.local/bin:$PATH" dsh-tui doctor 2>&1 || true)"
+  printf '%s\n' "$doctor_out" | grep -Fq "profile: $DSH_TUI_VERSION" || {
+    echo "remote dsh verification failed: doctor does not report profile $DSH_TUI_VERSION" >&2
+    printf '%s\n' "$doctor_out" >&2
+    exit 1
+  }
+fi
+grep -Fq 'diffLayout: unified' "$settings"
+echo "deployed remote dsh-tui $DSH_TUI_VERSION on dsh $DSH_CLI_VERSION"
+REMOTE_DSH
+
 echo "deployed remote tode via $SSH_HOST"
 echo "remote shell: $remote_shell"
 echo "remote port: $PORT"

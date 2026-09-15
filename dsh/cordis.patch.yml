@@ -1,0 +1,13 @@
+# dsh-TUI profile patch layer, applied after every bundle layer.
+#
+# This file is the ShellOS-owned spot for profile overrides: a top-level YAML
+# array of loader patch entries (id-targeted config overrides, disables, and
+# insert lists; `!!js` expressions allowed). The remote installer copies it to
+# $DSH_HOME/profiles/dsh-tui/cordis.patch.yml on every reinstall, so anything
+# tuned here reaches every machine instead of staying on one.
+#
+# Example:
+#   - id: working-activity
+#     config:
+#       publishIntervalMs: 500
+[]

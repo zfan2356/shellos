@@ -71,7 +71,11 @@ then installs the pinned cask; never remove the application manually.
 
 The same command always completely reinstalls the paired remote's pinned tode,
 tracked renderer patch, generated Linux editor configuration, exact extension
-inventory, Worktree Review, and remote wrapper. The installer refuses to run
+inventory, Worktree Review, and remote wrapper. On that same host it also
+installs the pinned `@deepseek-ai/dsh` CLI and `@deepseek-harness-tui/dsh-tui`
+plugin and replaces `$DSH_HOME/settings.yaml` and the profile
+`cordis.patch.yml` with the tracked repository copies; `DEEPSEEK_API_KEY`
+stays per machine and is never copied. The installer refuses to run
 without the SSH alias so a local-only deployment cannot be mistaken for a
 complete ShellOS reinstall.
 
@@ -93,7 +97,10 @@ kitty --version
 The versions must match the exact tags checked out in
 `third-party/terminal-code` and `third-party/kitty`. The complete installer
 also verifies both tracked patch markers, App Nap setting, local and remote
-Worktree Review installation, and the remote tode version.
+Worktree Review installation, the remote tode version, and the remote dsh
+installation (`dsh-tui doctor` must report the pinned profile, the tracked
+settings must be byte-identical, and the launcher symlink must resolve into
+the profile).
 
 Test the remote UI from a kitty-managed connection:
 

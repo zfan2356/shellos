@@ -42,6 +42,7 @@ contain implementation patches or configuration variants.
 | `kitty/` | Canonical kitty configuration and theme |
 | `editor/` | Canonical editor settings, keybindings, extension inventory, and Worktree Review source |
 | `tode/` | Canonical tode shortcuts and theme |
+| `dsh/` | Pinned dsh CLI and dsh-tui plugin versions plus the tracked harness configuration |
 | `scripts/reinstall-shellos.sh` | The only supported machine deployment entrypoint |
 | `scripts/install-tode-release.sh` | Internal pinned-release installer |
 | `scripts/link.sh` | Internal config-copy helper; despite its historical name, it creates no live config links |
@@ -57,6 +58,7 @@ contain implementation patches or configuration variants.
 | `docs/remote-server.md` | Generic local/remote usage and private connection inputs |
 | `third-party/kitty` | Pinned kitty upstream source |
 | `third-party/terminal-code` | Pinned tode upstream source |
+| `docs/dsh-tui.md` | dsh CLI and dsh-tui installation, tracked configuration, and secrets policy |
 
 Canonical editor files are copied from the pulled repository during reinstall,
 not symlinked. The two installed skill directories are copies as well. Editing
@@ -76,8 +78,11 @@ cd ~/wxg/shellos
 
 The installer reinstalls pinned kitty, the configured font, pinned tode, all
 tracked configuration and Tode patches, the extension inventory, Worktree
-Review, the ShellOS skills, and the paired remote setup.
-See `docs/remote-server.md` for the required `kitten ssh` connection setup.
+Review, the ShellOS skills, the paired remote setup, and the pinned dsh CLI
+with dsh-tui on the remote host.
+See `docs/remote-server.md` for the required `kitten ssh` connection setup and
+`docs/dsh-tui.md` for the dsh pins, tracked configuration, and the per-machine
+`DEEPSEEK_API_KEY`.
 
 ## Development workflow
 

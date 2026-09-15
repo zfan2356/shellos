@@ -79,6 +79,13 @@ installed result in place.
 - Pin installed kitty and tode versions with `third-party/kitty` and
   `third-party/terminal-code`. A version upgrade is incomplete until the pin,
   scripts/docs if needed, commit, push, pull, and full reinstall all succeed.
+- `dsh/versions.env` pins the installed `@deepseek-ai/dsh` CLI and
+  `@deepseek-harness-tui/dsh-tui` plugin. `dsh/settings.yaml` and
+  `dsh/cordis.patch.yml` are canonical copies of `$DSH_HOME/settings.yaml` and
+  the profile patch layer: repository state is decisive, so the remote
+  installer replaces both on every reinstall. `DEEPSEEK_API_KEY` and every
+  other credential stay outside the repository in `$DSH_HOME/.env` or
+  `$DSH_HOME/.credentials.yaml`. See `docs/dsh-tui.md`.
 - A pre-existing `/Applications/kitty.app` may not have a matching Homebrew
   cask receipt. Do not delete or overwrite it manually. The full installer
   moves any unmanaged bundle into its timestamped backup before installing the
