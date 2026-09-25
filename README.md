@@ -80,6 +80,9 @@ The installer reinstalls pinned kitty, the configured font, pinned tode, all
 tracked configuration and Tode patches, the extension inventory, Worktree
 Review, the ShellOS skills, the paired remote setup, and the pinned dsh CLI
 with dsh-tui on the remote host.
+It refreshes Homebrew metadata before checking the kitty pin and disables
+further automatic updates for that run so the selected cask cannot change
+between preflight and verification.
 See `docs/remote-server.md` for the required `kitten ssh` connection setup and
 `docs/dsh-tui.md` for the dsh pins, tracked configuration, and the per-machine
 `DEEPSEEK_API_KEY`.

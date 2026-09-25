@@ -59,6 +59,11 @@ if git -C "$REPO" submodule status --recursive | grep -Eq '^[-+U]'; then
 fi
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/assert-repo-first.sh"
 
+# Refresh Homebrew once before resolving its kitty version, then prevent later
+# brew commands from changing the catalog between the preflight and install.
+brew update
+export HOMEBREW_NO_AUTO_UPDATE=1
+
 KITTY_PIN=$(git -C "$REPO/third-party/kitty" describe --tags --exact-match)
 TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-match)
 BREW_KITTY=$(brew info --cask --json=v2 kitty |
