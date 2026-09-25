@@ -269,6 +269,21 @@ cmp -s "$staging/dsh/cordis.patch.yml" "$profile_patch" || {
   echo "remote dsh verification failed: $settings mode is not 600" >&2
   exit 1
 }
+launcher="$HOME/.local/bin/dsh-tui"
+[[ -L "$launcher" ]] || {
+  echo "remote dsh verification failed: $launcher is not a symlink" >&2
+  exit 1
+}
+# install-dsh-tui selects an NVM node root in its child process. Recover that
+# root from the installed launcher so this non-interactive verifier does not
+# depend on login-shell PATH initialization.
+launcher_target=$(readlink "$launcher")
+node_bin=$(dirname "$launcher_target")
+[[ "$launcher_target" == /* && -x "$node_bin/node" ]] || {
+  echo "remote dsh verification failed: cannot resolve node beside $launcher_target" >&2
+  exit 1
+}
+export PATH="$node_bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 plugin_version=$(node -e '
   const { readFileSync } = require("node:fs")
   process.stdout.write(JSON.parse(readFileSync(process.argv[1], "utf8")).version ?? "")
@@ -277,15 +292,8 @@ plugin_version=$(node -e '
   echo "remote dsh verification failed: profile has dsh-tui $plugin_version, expected $DSH_TUI_VERSION" >&2
   exit 1
 }
-launcher="$HOME/.local/bin/dsh-tui"
-[[ -L "$launcher" ]] || {
-  echo "remote dsh verification failed: $launcher is not a symlink" >&2
-  exit 1
-}
 if command -v dsh-tui >/dev/null 2>&1 || [[ -x "$launcher" ]]; then
-  # A non-interactive ssh command does not always carry ~/.local/bin, so the
-  # doctor probe runs with the launcher directory forced onto PATH.
-  doctor_out="$(PATH="$HOME/.local/bin:$PATH" dsh-tui doctor 2>&1 || true)"
+  doctor_out="$(dsh-tui doctor 2>&1 || true)"
   printf '%s\n' "$doctor_out" | grep -Fq "profile: $DSH_TUI_VERSION" || {
     echo "remote dsh verification failed: doctor does not report profile $DSH_TUI_VERSION" >&2
     printf '%s\n' "$doctor_out" >&2

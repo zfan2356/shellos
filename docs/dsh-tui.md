@@ -64,8 +64,10 @@ model, so a fresh machine is installed but not usable until the key is added.
 
 The remote deployment ends with `dsh-tui doctor` and fails unless it reports
 the pinned profile, plus byte-identical tracked configuration, mode 600 on
-`settings.yaml`, and a real `~/.local/bin/dsh-tui` symlink. Run the checks by
-hand with:
+`settings.yaml`, and a real `~/.local/bin/dsh-tui` symlink. The non-interactive
+SSH verifier resolves the Node runtime beside that symlink's target because an
+NVM installation is not necessarily present on its initial `PATH`. Run the
+checks by hand from a login shell with:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
