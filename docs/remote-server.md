@@ -83,10 +83,18 @@ remote pixel launcher when appropriate.
 
 The local terminal-browser supervises its SSH SOCKS master. If a network
 interruption kills that master while the remote Tode services remain alive,
-it recreates the tunnel on the same local port so Chromium's existing proxy
-configuration and WebSockets can reconnect. A white editor that keeps logging
-WebSocket code 1006 together with a missing local SOCKS listener indicates this
-patch is absent or the reconnect itself cannot reach the configured SSH host.
+it recreates the tunnel on the same local port, reapplies that window's proxy,
+discards Chromium's stale connections, and reloads every editor tab. Each SSH
+window has its own ephemeral browser partition so another Tode window cannot
+replace its proxy or tear it down when closing. The launcher reports transport
+and editor recovery separately; after `reconnected <host>` the editor should be
+usable without reopening Tode.
+
+`Ctrl+Shift+Q` is an unconditional emergency exit for the Tode browser window,
+including app mode where ordinary browser shortcuts are disabled. Use it if the
+SSH host remains unreachable or recovery cannot reload the editor. A white
+editor that keeps logging WebSocket code 1006 without a recovery status means
+the reconnect patch is absent or the configured SSH host is still unreachable.
 
 The historical `scripts/tode-remote <ssh-host> [remote-path] [port]` launcher
 remains a tracked compatibility/debugging tool, but it is not an installation

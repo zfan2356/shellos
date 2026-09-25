@@ -49,7 +49,7 @@ contain implementation patches or configuration variants.
 | `scripts/apply-tode-patches.sh` | Internal dispatcher for all tracked Tode patches |
 | `scripts/assert-repo-first.sh` | Internal published-checkout assertion |
 | `scripts/patch-terminal-browser.sh` | Tracked renderer patch, applied only during full reinstall |
-| `scripts/patch-terminal-browser-ssh-reconnect.sh` | Tracked SSH SOCKS recovery patch, applied only during full reinstall |
+| `scripts/patch-terminal-browser-ssh-reconnect.sh` | Tracked per-window SSH proxy recovery and emergency-exit patch, applied only during full reinstall |
 | `scripts/patch-tode-cmd-right-click.sh` | Tracked navigation patch, applied only during full reinstall |
 | `scripts/patch-tode-worktree-review-click.sh` | Tracked Explorer resolver that atomically opens Worktree Review Diff inputs |
 | `scripts/install-worktree-review.sh` | Internal extension build/install helper |

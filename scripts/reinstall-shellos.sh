@@ -230,8 +230,10 @@ done <<< "$CURRENT_EXTENSIONS"
 }
 grep -Fq 'shellos: unfocused-throttle v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
-grep -Fq 'shellos: ssh-tunnel-reconnect v1' \
+grep -Fq 'shellos: ssh-tunnel-reconnect v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
+grep -Fq 'shellos: ssh-tunnel-reconnect v2' \
+  "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/preload.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
