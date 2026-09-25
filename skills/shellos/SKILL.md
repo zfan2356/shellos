@@ -92,7 +92,7 @@ installed result in place.
   pinned cask, and the complete workflow must be restarted after such a
   failure.
 - Internal helpers (`link.sh`, `install-tode-release.sh`,
-  `apply-tode-patches.sh`, both `patch-*.sh` scripts,
+  `apply-tode-patches.sh`, the tracked `patch-*.sh` scripts,
   `install-worktree-review.sh`, `assert-repo-first.sh`, and
   `deploy-remote-tode.sh`) are implementation details of `reinstall-shellos.sh`;
   do not invoke them directly or bypass their guard.

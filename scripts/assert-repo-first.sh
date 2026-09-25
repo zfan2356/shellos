@@ -14,6 +14,7 @@ required=(
   scripts/assert-repo-first.sh
   scripts/apply-tode-patches.sh
   scripts/patch-terminal-browser.sh
+  scripts/patch-terminal-browser-ssh-reconnect.sh
   scripts/patch-tode-cmd-right-click.sh
   scripts/patch-tode-worktree-review-click.sh
 )

@@ -81,6 +81,13 @@ forward a trailing `--review` argument, so the repository does not advertise
 that spelling for remote sessions. Leading flags are delegated to the pinned
 remote pixel launcher when appropriate.
 
+The local terminal-browser supervises its SSH SOCKS master. If a network
+interruption kills that master while the remote Tode services remain alive,
+it recreates the tunnel on the same local port so Chromium's existing proxy
+configuration and WebSockets can reconnect. A white editor that keeps logging
+WebSocket code 1006 together with a missing local SOCKS listener indicates this
+patch is absent or the reconnect itself cannot reach the configured SSH host.
+
 The historical `scripts/tode-remote <ssh-host> [remote-path] [port]` launcher
 remains a tracked compatibility/debugging tool, but it is not an installation
 path.
