@@ -84,6 +84,18 @@ See `docs/remote-server.md` for the required `kitten ssh` connection setup and
 `docs/dsh-tui.md` for the dsh pins, tracked configuration, and the per-machine
 `DEEPSEEK_API_KEY`.
 
+If you installed the exact pinned kitty release yourself from its macOS DMG,
+you can keep that app while reinstalling all other ShellOS-managed components:
+
+```bash
+./scripts/reinstall-shellos.sh --use-installed-kitty <ssh-alias> [port]
+```
+
+This mode requires `/Applications/kitty.app` to match the `third-party/kitty`
+submodule tag. It checks the app before changing either machine, skips the
+Homebrew kitty version check and kitty replacement, and still deploys the full
+local and paired-remote configuration.
+
 ## Development workflow
 
 Use a separate clone or worktree for changes. Update source files and version
