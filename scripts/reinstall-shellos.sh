@@ -5,11 +5,16 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 FORMAL_REPO="$HOME/wxg/shellos"
+USE_INSTALLED_KITTY=0
+if [[ "${1:-}" == --use-installed-kitty ]]; then
+  USE_INSTALLED_KITTY=1
+  shift
+fi
 SSH_HOST="${1:-}"
 PORT="${2:-8791}"
 
 if [[ $# -lt 1 || $# -gt 2 || ! "$SSH_HOST" =~ ^[A-Za-z0-9._-]+$ ]]; then
-  echo "usage: $0 <ssh-alias> [port]" >&2
+  echo "usage: $0 [--use-installed-kitty] <ssh-alias> [port]" >&2
   exit 2
 fi
 if [[ ! "$PORT" =~ ^[0-9]+$ ]] || (( PORT < 1 || PORT > 65535 )); then
@@ -61,12 +66,24 @@ SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/assert-repo-first.sh"
 
 KITTY_PIN=$(git -C "$REPO/third-party/kitty" describe --tags --exact-match)
 TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-match)
-BREW_KITTY=$(brew info --cask --json=v2 kitty |
-  python3 -c 'import json,sys; print(json.load(sys.stdin)["casks"][0]["version"])')
-if [[ "v$BREW_KITTY" != "$KITTY_PIN" ]]; then
-  echo "refusing to deploy: Homebrew kitty is v$BREW_KITTY but ShellOS pins $KITTY_PIN" >&2
-  echo "update and push the kitty submodule pin first" >&2
-  exit 1
+KITTY_BIN=/Applications/kitty.app/Contents/MacOS/kitty
+if [[ "$USE_INSTALLED_KITTY" == 1 ]]; then
+  [[ -x "$KITTY_BIN" && -x /Applications/kitty.app/Contents/MacOS/kitten ]] || {
+    echo "refusing to deploy: install kitty $KITTY_PIN in /Applications/kitty.app first" >&2
+    exit 1
+  }
+  [[ "v$("$KITTY_BIN" --version | awk '{print $2}')" == "$KITTY_PIN" ]] || {
+    echo "refusing to deploy: installed kitty does not match $KITTY_PIN" >&2
+    exit 1
+  }
+else
+  BREW_KITTY=$(brew info --cask --json=v2 kitty |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["casks"][0]["version"])')
+  if [[ "v$BREW_KITTY" != "$KITTY_PIN" ]]; then
+    echo "refusing to deploy: Homebrew kitty is v$BREW_KITTY but ShellOS pins $KITTY_PIN" >&2
+    echo "update and push the kitty submodule pin first" >&2
+    exit 1
+  fi
 fi
 
 # Confirm that the paired host is reachable and can run the tracked installer
@@ -109,15 +126,17 @@ for source in \
 done
 echo "local backup: $BACKUP"
 
-if brew list --cask kitty >/dev/null 2>&1; then
-  brew uninstall --cask --force kitty
+if [[ "$USE_INSTALLED_KITTY" == 0 ]]; then
+  if brew list --cask kitty >/dev/null 2>&1; then
+    brew uninstall --cask --force kitty
+  fi
+  if [[ -e /Applications/kitty.app ]]; then
+    mkdir -p "$BACKUP/apps"
+    mv /Applications/kitty.app "$BACKUP/apps/kitty.app"
+    echo "adopted unmanaged kitty app into $BACKUP/apps/kitty.app"
+  fi
+  brew install --cask kitty
 fi
-if [[ -e /Applications/kitty.app ]]; then
-  mkdir -p "$BACKUP/apps"
-  mv /Applications/kitty.app "$BACKUP/apps/kitty.app"
-  echo "adopted unmanaged kitty app into $BACKUP/apps/kitty.app"
-fi
-brew install --cask kitty
 if brew list --cask font-maple-mono-nf-cn >/dev/null 2>&1; then
   brew reinstall --cask font-maple-mono-nf-cn
 else
@@ -219,7 +238,7 @@ done <<< "$CURRENT_EXTENSIONS"
   echo "local tode verification failed" >&2
   exit 1
 }
-[[ "v$(kitty --version | awk '{print $2}')" == "$KITTY_PIN" ]] || {
+[[ "v$("$KITTY_BIN" --version | awk '{print $2}')" == "$KITTY_PIN" ]] || {
   echo "local kitty verification failed" >&2
   exit 1
 }
