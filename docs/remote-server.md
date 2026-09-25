@@ -28,6 +28,11 @@ command -v kitten
 ```
 
 Plain `ssh` does not provide this environment and cannot open the local overlay.
+The SSH alias is case-sensitive and must also match the alias passed to the
+last complete ShellOS reinstall. If the alias is renamed or its case changes,
+rerun the complete installer with the new spelling. A local Tode startup error
+is kept visible in the overlay until Enter is pressed instead of being reported
+as a successful open.
 
 ## Installation and updates
 

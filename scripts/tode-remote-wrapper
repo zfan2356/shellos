@@ -42,13 +42,23 @@ if [ -n "${KITTY_LISTEN_ON:-}" ] && [ -n "$KITTEN_BIN" ]; then
     echo "TODE_REMOTE_SSH_HOST is missing from $CONFIG" >&2
     exit 1
   fi
+  # Remote control confirms that kitty created the overlay, not that the local
+  # tode process connected successfully. Keep a failed launch visible so a
+  # stale SSH alias or another startup error cannot masquerade as success.
+  echo "opening locally in the current kitty window: $project"
   "$KITTEN_BIN" @ launch --type=overlay-main --self --title "tode $(basename "$project")" \
-    /bin/sh -lc 'exec "$HOME/.local/bin/tode" --ssh "$@"' sh \
-    "$TODE_REMOTE_SSH_HOST" "$project" >/dev/null \
-    && {
-      echo "opened locally in the current kitty window: $project"
-      exit 0
-    }
+    /bin/sh -lc '
+      "$HOME/.local/bin/tode" --ssh "$@"
+      status=$?
+      if [ "$status" -ne 0 ]; then
+        printf "\ntode could not open %s through SSH target %s (exit %s)\n" \
+          "$2" "$1" "$status" >&2
+        printf "Press Enter to close this overlay..." >&2
+        IFS= read -r _ || true
+      fi
+      exit "$status"
+    ' sh "$TODE_REMOTE_SSH_HOST" "$project" >/dev/null \
+    && exit 0
   echo "kitty remote control failed; falling back to pixel mode" >&2
 elif [ -z "${KITTY_WINDOW_ID:-}" ]; then
   # Plain `ssh` session: no remote control, and pixel mode cannot locate the
