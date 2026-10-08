@@ -118,6 +118,45 @@ the only route to a local shell is closing the tab that holds the session.
 
 ## Troubleshooting policy
 
+### SSH target resolution
+
+The generated `TODE_REMOTE_SSH_HOST` must be an SSH target that works from the
+Mac, not merely a remote hostname or a shell shortcut. The installer writes
+its `<ssh-alias>` argument verbatim; the remote wrapper passes it unchanged
+to local `tode --ssh`. Tode's terminal-browser opens its tunnel with `ssh`
+from the local PATH. It can expand simple shell aliases for `ssh`, but does
+not execute shell functions. Kitty's `ssh.conf` controls bootstrap and remote
+control; it does not replace OpenSSH's `~/.ssh/config` host mapping.
+
+Before changing anything, inspect the exact target in the remote env file and
+compare each spelling on the Mac:
+
+```bash
+type -a <ssh-alias>
+alias <ssh-alias>
+functions <ssh-alias>
+command -v ssh
+ssh -G <ssh-alias> | grep -E '^(hostname|user|port|identityfile) '
+ssh -o BatchMode=yes -o ConnectTimeout=10 <ssh-alias> 'hostname'
+```
+
+Do not infer a case mismatch solely from a lowercase name in a DNS error.
+Compare `ssh -G` output and real connections: an unmatched spelling may fall
+back to DNS, the local username, and port 22 even when another spelling works.
+When the saved target is stale, use the verified OpenSSH alias for the complete
+published reinstall above. This regenerates `remote-tode.env`; do not hand-edit
+the installed wrapper or env file, or blindly lowercase arbitrary SSH targets.
+Keep private hostnames, addresses, keys, and mappings outside this repository.
+
+Finally, reconnect in kitty with `kitten ssh <ssh-alias>`, run
+`tode <remote-project-path>`, and verify that the remote editor actually loads.
+A successful kitty `launch` response only confirms creation of an overlay, not
+SSH or editor readiness. The wrapper keeps failed local launches visible with
+their exit status until Enter is pressed. Complete reinstalls back up the
+wrapper itself as well as its launcher symlink so existing changes survive.
+
+### Remote runtime compatibility
+
 On old or headless Linux hosts, Electron may need glibc compatibility, sandbox,
 or GPU handling. Diagnose read-only, then implement the solution as a tracked
 ShellOS script or patch. Publish it and run the complete reinstall on both

@@ -111,7 +111,8 @@ user_dir="$HOME/.local/share/tode/vscode/user-data/User"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/shellos"
 
 mkdir -p "$backup" "$bin_dir" "$share_dir" "$user_dir" "$config_dir"
-for file in "$bin_dir/tode" "$user_dir/settings.json" "$user_dir/keybindings.json" \
+for file in "$bin_dir/tode" "$share_dir/tode-remote-wrapper" \
+  "$user_dir/settings.json" "$user_dir/keybindings.json" \
   "$config_dir/remote-tode.env"; do
   [ ! -e "$file" ] && [ ! -L "$file" ] && continue
   cp -a "$file" "$backup/$(basename "$file")"
