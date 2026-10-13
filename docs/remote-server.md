@@ -202,7 +202,8 @@ URL rewrite. Homebrew filters ordinary `GIT_*` environment variables, so the
 tracked `scripts/homebrew-git` shim supplies these options with `git -c` via
 `HOMEBREW_GIT_PATH`. It does not change the user's configured mirror or global
 Git configuration. Failures on other custom remotes are
-not redirected. This preflight completes before any Tode installation is
+not redirected. The retry gives the failed updater's children two seconds to
+release Homebrew's update lock before starting a new updater. This preflight completes before any Tode installation is
 replaced. Run `bash tests/homebrew-update.test.sh` to verify fallback behavior.
 
 ### SSH target resolution

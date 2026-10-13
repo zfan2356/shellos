@@ -73,6 +73,7 @@ update_homebrew() {
     *) return 1 ;;
   esac
   echo "Homebrew mirror update failed; retrying through the official GitHub remote"
+  sleep 2
   env HOMEBREW_GIT_PATH="$REPO/scripts/homebrew-git" \
     HOMEBREW_SHELLOS_GIT="$git_bin" HOMEBREW_FORCE_BREWED_GIT= \
     HOMEBREW_SHELLOS_MIRROR="$brew_remote" brew update
