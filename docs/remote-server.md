@@ -198,8 +198,10 @@ the only route to a local shell is closing the tab that holds the session.
 The complete installer bounds stalled Git HTTP transfers with a 30-second
 low-speed timeout. If the configured Tsinghua Homebrew mirror fails, it retries
 the update through the official GitHub repository using a process-local Git
-URL rewrite. It preserves existing command-scope Git configuration and does
-not change the user's configured mirror. Failures on other custom remotes are
+URL rewrite. Homebrew filters ordinary `GIT_*` environment variables, so the
+tracked `scripts/homebrew-git` shim supplies these options with `git -c` via
+`HOMEBREW_GIT_PATH`. It does not change the user's configured mirror or global
+Git configuration. Failures on other custom remotes are
 not redirected. This preflight completes before any Tode installation is
 replaced. Run `bash tests/homebrew-update.test.sh` to verify fallback behavior.
 

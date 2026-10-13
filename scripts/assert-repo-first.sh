@@ -12,6 +12,7 @@ fi
 
 required=(
   scripts/assert-repo-first.sh
+  scripts/homebrew-git
   scripts/apply-tode-patches.sh
   scripts/patch-terminal-browser.sh
   scripts/patch-terminal-browser-ssh-reconnect.sh

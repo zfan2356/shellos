@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+args=(-c http.lowSpeedLimit=1024 -c http.lowSpeedTime=30)
+if [[ -n "${HOMEBREW_SHELLOS_MIRROR:-}" ]]; then
+  args+=(-c "url.https://github.com/Homebrew/brew.insteadOf=$HOMEBREW_SHELLOS_MIRROR")
+fi
+exec "${HOMEBREW_SHELLOS_GIT:?missing ShellOS Git executable}" "${args[@]}" "$@"

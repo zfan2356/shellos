@@ -62,10 +62,10 @@ SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/assert-repo-first.sh"
 # Refresh Homebrew once before resolving its kitty version, then prevent later
 # brew commands from changing the catalog between the preflight and install.
 update_homebrew() {
-  export GIT_HTTP_LOW_SPEED_LIMIT=${GIT_HTTP_LOW_SPEED_LIMIT:-1024}
-  export GIT_HTTP_LOW_SPEED_TIME=${GIT_HTTP_LOW_SPEED_TIME:-30}
-  if brew update; then return 0; fi
-  local brew_repo brew_remote overrides
+  local brew_repo brew_remote git_bin
+  git_bin=$(command -v git)
+  if env HOMEBREW_GIT_PATH="$REPO/scripts/homebrew-git" \
+    HOMEBREW_SHELLOS_GIT="$git_bin" HOMEBREW_FORCE_BREWED_GIT= brew update; then return 0; fi
   brew_repo=$(brew --repository)
   brew_remote=$(git -C "$brew_repo" remote get-url origin)
   case "$brew_remote" in
@@ -73,10 +73,9 @@ update_homebrew() {
     *) return 1 ;;
   esac
   echo "Homebrew mirror update failed; retrying through the official GitHub remote"
-  overrides=${GIT_CONFIG_COUNT:-0}
-  env "GIT_CONFIG_COUNT=$((overrides + 1))" \
-    "GIT_CONFIG_KEY_$overrides=url.https://github.com/Homebrew/brew.insteadOf" \
-    "GIT_CONFIG_VALUE_$overrides=$brew_remote" brew update
+  env HOMEBREW_GIT_PATH="$REPO/scripts/homebrew-git" \
+    HOMEBREW_SHELLOS_GIT="$git_bin" HOMEBREW_FORCE_BREWED_GIT= \
+    HOMEBREW_SHELLOS_MIRROR="$brew_remote" brew update
 }
 update_homebrew
 export HOMEBREW_NO_AUTO_UPDATE=1
