@@ -230,10 +230,12 @@ done <<< "$CURRENT_EXTENSIONS"
 }
 grep -Fq 'shellos: unfocused-throttle v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
-grep -Fq 'shellos: ssh-tunnel-reconnect v2' \
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
-grep -Fq 'shellos: ssh-tunnel-reconnect v2' \
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
+SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-terminal-browser-startup.sh" --check
+SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-tode-ready-url.sh" --check
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/preload.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \

@@ -79,6 +79,8 @@ cp "$REPO/scripts/apply-tode-patches.sh" "$work/apply-tode-patches.sh"
 cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
 cp "$REPO/scripts/patch-terminal-browser-ssh-reconnect.sh" \
   "$work/patch-terminal-browser-ssh-reconnect.sh"
+cp "$REPO/scripts/patch-tode-ready-url.sh" "$work/patch-tode-ready-url.sh"
+cp "$REPO/scripts/patch-terminal-browser-startup.sh" "$work/patch-terminal-browser-startup.sh"
 cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
 cp "$REPO/scripts/patch-tode-worktree-review-click.sh" \
   "$work/patch-tode-worktree-review-click.sh"
@@ -93,6 +95,8 @@ scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt
   "$work/tode-remote-wrapper" "$work/install-tode-release.sh" \
   "$work/apply-tode-patches.sh" "$work/patch-terminal-browser.sh" \
   "$work/patch-terminal-browser-ssh-reconnect.sh" \
+  "$work/patch-tode-ready-url.sh" \
+  "$work/patch-terminal-browser-startup.sh" \
   "$work/patch-tode-cmd-right-click.sh" \
   "$work/patch-tode-worktree-review-click.sh" "$work/remote-tode.env" \
   "$SSH_HOST:$remote_work/"
@@ -121,6 +125,8 @@ done
 chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
   "$staging/patch-terminal-browser.sh" \
   "$staging/patch-terminal-browser-ssh-reconnect.sh" \
+  "$staging/patch-tode-ready-url.sh" \
+  "$staging/patch-terminal-browser-startup.sh" \
   "$staging/patch-tode-cmd-right-click.sh" \
   "$staging/patch-tode-worktree-review-click.sh"
 if [[ -x "$bin_dir/tode" ]]; then
@@ -230,10 +236,16 @@ done <<< "$current"
 grep -Fq "\"version\": \"$tode_pin\"" "$HOME/.local/state/tode/install.json"
 grep -Fq 'shellos: unfocused-throttle v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
-grep -Fq 'shellos: ssh-tunnel-reconnect v2' \
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
-grep -Fq 'shellos: ssh-tunnel-reconnect v2' \
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
+grep -Fq 'shellos: parallel-startup v1' \
+  "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
+grep -Fq 'shellos: parallel-startup v1' \
+  "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
+grep -Fq 'shellos: ready-url v1' "$HOME/.local/lib/tode/dist/main.js"
+grep -Fq 'shellos: ready-url v1' "$HOME/.local/lib/tode/dist/ssh.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/preload.js"
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \

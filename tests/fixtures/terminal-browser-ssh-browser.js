@@ -1,20 +1,27 @@
 const state = globalThis.__sshBrowserTestState;
 
-const targetSession = {
-  async setProxy(config) {
-    state.proxyCalls.push(config);
-  },
-  async closeAllConnections() {
-    state.closeCalls += 1;
-  },
-};
+function makeTargetSession() {
+  return {
+    async setProxy(config) {
+      state.proxyCalls.push(config);
+      if (state.proxyGate) await state.proxyGate;
+      if (state.failProxy) throw new Error("proxy setup failed");
+      this.proxy = config.proxyRules;
+    },
+    async closeAllConnections() {
+      state.closeCalls += 1;
+    },
+  };
+}
+const partitionSessions = new Map();
 const import_electron = {
   app: { on() {} },
   session: {
-    defaultSession: targetSession,
+    defaultSession: makeTargetSession(),
     fromPartition(name) {
       state.partitions.push(name);
-      return targetSession;
+      if (!partitionSessions.has(name)) partitionSessions.set(name, makeTargetSession());
+      return partitionSessions.get(name);
     },
   },
 };
@@ -81,9 +88,11 @@ class Session {
   nudgeResize() {
     state.resizes += 1;
   }
-  shutdown() {
+  shutdown(code = 0) {
+    if (this.shuttingDown) return;
     this.shuttingDown = true;
     state.shutdowns += 1;
+    this.ctx.onClose(code);
   }
   handleKey(event) {
     if (event.kind !== "release") {
@@ -106,4 +115,4 @@ function handleMessage(message, session2, reply) {
         }
 }
 
-module.exports = { createSession, handleMessage, persistentPartition, Session };
+module.exports = { createSession, handleMessage, persistentPartition, Session, partitionSessions };

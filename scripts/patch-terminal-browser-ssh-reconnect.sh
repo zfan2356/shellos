@@ -2,7 +2,7 @@
 # Patch terminal-browser's SSH transport and browser session together:
 # recreate a dead SOCKS master on the same port, tell the owning browser
 # session to discard stale connections and reload, isolate concurrent SSH
-# windows from each other's proxies, and keep an emergency quit chord.
+# windows from each other's proxies, retain reusable caches, and keep an emergency quit chord.
 #
 # Idempotent and guarded by anchors from terminal-browser v0.14.0. It is only
 # run by the complete ShellOS reinstall; never apply it to a live installation.
@@ -45,7 +45,7 @@ const fs = require("fs");
 const cliTarget = process.argv[2];
 const browserTarget = process.argv[3];
 const mode = process.argv[4];
-const patchedMark = "/* shellos: ssh-tunnel-reconnect v2 */";
+const patchedMark = "/* shellos: ssh-tunnel-reconnect v3 */";
 
 function occurrences(src, value) {
   return src.split(value).length - 1;
@@ -65,7 +65,7 @@ function replaceOnce(src, anchor, replacement, label) {
 
 function verify(src, target) {
   if (!src.includes(patchedMark)) {
-    console.error("ssh-tunnel-reconnect v2 patch is missing: " + target);
+    console.error("ssh-tunnel-reconnect v3 patch is missing: " + target);
     process.exit(1);
   }
 }
@@ -75,8 +75,8 @@ let browser = fs.readFileSync(browserTarget, "utf8");
 if (mode === "--check") {
   verify(cli, cliTarget);
   verify(browser, browserTarget);
-  console.log("ssh-tunnel-reconnect v2 patch verified: " + cliTarget);
-  console.log("ssh-tunnel-reconnect v2 patch verified: " + browserTarget);
+  console.log("ssh-tunnel-reconnect v3 patch verified: " + cliTarget);
+  console.log("ssh-tunnel-reconnect v3 patch verified: " + browserTarget);
   process.exit(0);
 }
 
@@ -111,7 +111,7 @@ if (!cli.includes(patchedMark)) {
   }
 
   async function shellosOpenSshTunnel(target, status) {
-    /* shellos: ssh-tunnel-reconnect v2 */
+    /* shellos: ssh-tunnel-reconnect v3 */
     const { destination, hostArgs, aliasCommand } = resolveSshTarget(target);
     if (aliasCommand) status(`${target} is an alias for ssh ${aliasCommand}`);
     const controlPath = freshControlPath();
@@ -324,8 +324,17 @@ if (!browser.includes(patchedMark)) {
     browser,
     `function createSession(ctx) {
   const session2 = new Session(ctx);`,
-    `function createSession(ctx) {
-  /* shellos: ssh-tunnel-reconnect v2 */
+    `var shellosSshPartitions = new Set();
+function shellosAcquireSshPartition(target) {
+  const host = require("node:crypto").createHash("sha256").update(target).digest("hex").slice(0, 24);
+  let slot = 0;
+  while (shellosSshPartitions.has(\`persist:shellos-ssh-\${host}-\${slot}\`)) slot++;
+  const partition = \`persist:shellos-ssh-\${host}-\${slot}\`;
+  shellosSshPartitions.add(partition);
+  return partition;
+}
+function createSession(ctx) {
+  /* shellos: ssh-tunnel-reconnect v3 */
   const session2 = new Session(ctx);`,
     "browser patch marker",
   );
@@ -342,19 +351,10 @@ if (!browser.includes(patchedMark)) {
   );
   browser = replaceOnce(
     browser,
-    `function persistentPartition(partition) {
-  return partition.startsWith("persist:") ? partition : \`persist:\${partition}\`;
-}`,
-    `function persistentPartition(partition) {
-  if (partition.startsWith("shellos-ephemeral-ssh-")) return partition;
-  return partition.startsWith("persist:") ? partition : \`persist:\${partition}\`;
-}`,
-    "browser ephemeral SSH partition",
-  );
-  browser = replaceOnce(
-    browser,
     `    this.partition = flagValue(this.argv, "--partition") ?? (sshTarget ? \`ssh-\${sshTarget.replace(/[^A-Za-z0-9@._-]/g, "-")}\` : null);`,
-    `    this.partition = flagValue(this.argv, "--partition") ?? (sshTarget ? \`shellos-ephemeral-ssh-\${ctx.key}\` : null);`,
+    `    const explicitPartition = flagValue(this.argv, "--partition");
+    this.shellosCachePartition = explicitPartition === null && sshTarget ? shellosAcquireSshPartition(sshTarget) : null;
+    this.partition = explicitPartition ?? this.shellosCachePartition;`,
     "browser per-window SSH partition",
   );
   browser = replaceOnce(
@@ -363,17 +363,37 @@ if (!browser.includes(patchedMark)) {
     if (this.socksPort) await routeThroughSocksProxy(this.partition, this.socksPort);`,
     `  async recoverProxy() {
     if (!this.socksPort || this.shuttingDown) return;
-    await routeThroughSocksProxy(this.partition, this.socksPort);
-    const target = browserSession(this.partition);
-    await target.closeAllConnections();
-    this.tabs.eachController((controller) => {
-      controller.window.webContents.stop();
-      controller.window.webContents.reload();
+    this.shellosProxyReady = Promise.resolve(this.shellosProxyReady).catch(() => {}).then(async () => {
+      if (this.shuttingDown) return;
+      await routeThroughSocksProxy(this.partition, this.socksPort);
+      await browserSession(this.partition).closeAllConnections();
+      if (this.shuttingDown) return;
+      this.tabs.eachController((controller) => {
+        controller.window.webContents.stop();
+        controller.window.webContents.reload();
+      });
     });
+    return this.shellosProxyReady;
   }
   async start() {
-    if (this.socksPort) await routeThroughSocksProxy(this.partition, this.socksPort);`,
+    this.shellosProxyReady = this.socksPort
+      ? routeThroughSocksProxy(this.partition, this.socksPort).then(() => browserSession(this.partition).closeAllConnections())
+      : Promise.resolve();
+    await this.shellosProxyReady;
+    if (this.shuttingDown) return;`,
     "browser session proxy recovery",
+  );
+  browser = replaceOnce(
+    browser,
+    `    this.ctx.onClose(code);`,
+    `    if (this.shellosCachePartition) {
+      const partition = this.shellosCachePartition;
+      Promise.resolve(this.shellosProxyReady).catch(() => {})
+        .then(() => browserSession(partition).closeAllConnections())
+        .then(() => shellosSshPartitions.delete(partition), () => {});
+    }
+    this.ctx.onClose(code);`,
+    "browser SSH cache release after teardown",
   );
   browser = replaceOnce(
     browser,

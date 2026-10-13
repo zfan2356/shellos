@@ -85,8 +85,15 @@ The local terminal-browser supervises its SSH SOCKS master. If a network
 interruption kills that master while the remote Tode services remain alive,
 it recreates the tunnel on the same local port, reapplies that window's proxy,
 discards Chromium's stale connections, and reloads every editor tab. Each SSH
-window has its own ephemeral browser partition so another Tode window cannot
-replace its proxy or tear it down when closing. The launcher reports transport
+window leases its own persistent browser partition so another Tode window cannot
+replace its proxy or tear it down when closing. Partitions are isolated by the
+exact SSH target and concurrent window slot. Closing a window releases its slot
+only after pending proxy work and connection teardown finish; the next window
+reuses its disk cache with a new proxy connection. This avoids downloading the
+editor assets again for every folder while retaining multi-window isolation.
+The first launch for a host or an additional concurrent slot still has a cold
+cache. Explicit `--partition` values retain their original behavior.
+The launcher reports transport
 and editor recovery separately; after `reconnected <host>` the editor should be
 usable without reopening Tode.
 
@@ -95,6 +102,74 @@ including app mode where ordinary browser shortcuts are disabled. Use it if the
 SSH host remains unreachable or recovery cannot reload the editor. A white
 editor that keeps logging WebSocket code 1006 without a recovery status means
 the reconnect patch is absent or the configured SSH host is still unreachable.
+
+### Startup cache verification
+
+Run `bash tests/patch-terminal-browser-ssh-reconnect.test.sh` for cache-slot
+isolation, reuse, failed startup, and close/reconnect races. The optional real
+Electron test uses disposable user data and restarts Electron between cold and
+warm reads:
+
+```bash
+ELECTRON_BIN=/path/to/electron node tests/electron-ssh-cache.test.cjs
+```
+
+It also checks an ephemeral-session baseline. By default it serves a local
+cacheable fixture; set `SHELLOS_CACHE_TEST_URL` to a cacheable editor asset over
+a temporary SSH forward to measure real remote reads without opening a
+workspace or modifying the installed browser profile. This measures asset
+loading, not end-to-end editor readiness. On October 13, 2026, a 17.8 MB remote
+workbench asset took 534 ms cold, 46 ms from the persistent cache after restarting
+Electron, and 500 ms in a fresh ephemeral session. First-ever startup, SSH
+connection setup, bundle preparation, and extension activation remain separate
+costs; changing folders still creates distinct upstream bundles.
+
+### Ready-server launch path
+
+The paired-host wrapper probes `tode --serve --ready-url <folder>`. This checks
+the recorded server/injector processes and listeners without importing a
+profile, listing extensions, querying terminal colors, or starting services.
+When ready, the local overlay launches terminal-browser directly with the
+generated Tode preload/main scripts. Missing browser scripts use the Tode
+`--ssh <target> --ready-url <url>` path to generate them. A stopped server falls
+back to the original bundle/setup path. This fast path relies on the full
+ShellOS reinstall to synchronize the two machines' canonical settings and
+extensions; it deliberately does not reimport the Mac profile on every folder
+open. Normal direct `tode --ssh` launches keep their upstream bundle behavior.
+
+The wrapper passes its installer-verified SSH target as `ssh <target>`, avoiding
+terminal-browser's interactive-shell alias lookup (about 0.91 seconds on the
+measured Mac). This is not a change to arbitrary user-entered SSH aliases.
+Browser-daemon startup runs in parallel with SSH connection establishment, and
+socket polling uses 25 ms rather than 200 ms. Electron's default
+`window-all-closed` behavior is suppressed so the existing daemon idle timer
+actually controls its lifetime. The idle grace period is 15 minutes, retaining
+the browser process but not closed editor windows; `tode --shutdown` still stops
+it explicitly. SSH tunnels remain isolated and close with their windows.
+
+### Workbench startup measurements
+
+`tests/prepare-tode-startup-benchmark.sh` prepares an isolated remote installation,
+copied profile/extensions, and two tiny test folders under `/tmp`. It uses only
+the existing code-server binary and does not change the installed profile.
+`tests/tode-startup-benchmark.cjs` launches the disposable local installation in
+a real kitty window, waits for `code/didStartWorkbench`, then closes only the
+test window. Set `KITTY_TEST_SOCKET` to the kitty control socket. Optional
+`KITTY_TEST_WINDOW` selects an overlay parent; `SHELLOS_BENCH_DIRECT=1` measures
+the ready wrapper's direct-browser path. The JSON report separates time before
+navigation from workbench initialization. `SHELLOS_STARTUP_RESOURCES=1` adds
+CDP resource timings, and the disposable directory retains the full Tode marks
+and child-process trace for diagnosis.
+
+On October 13, 2026, consecutive overlay launches of the ready-server path took
+1189, 1154, and 1097 ms from the Mac launch request to the workbench startup mark.
+The workbench itself accounted for 733–814 ms. These are not sub-second
+end-to-end results: they exclude the remote wrapper probe, use tiny folders,
+and do not establish completion of Explorer loading or language-server startup.
+The first browser launch and stopped-server fallback are slower. Do not treat
+the earlier single-asset cache result as an editor startup SLA. Run
+`node tests/tode-startup.test.cjs` for ready/fallback, URL validation, parallel
+startup, and daemon lifecycle regression checks.
 
 The historical `scripts/tode-remote <ssh-host> [remote-path] [port]` launcher
 remains a tracked compatibility/debugging tool, but it is not an installation

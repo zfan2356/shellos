@@ -46,9 +46,22 @@ if [ -n "${KITTY_LISTEN_ON:-}" ] && [ -n "$KITTEN_BIN" ]; then
   # tode process connected successfully. Keep a failed launch visible so a
   # stale SSH alias or another startup error cannot masquerade as success.
   echo "opening locally in the current kitty window: $project"
+  ready_url=$("$PIXEL_BIN" --serve --ready-url "$project" 2>/dev/null) || ready_url=""
   "$KITTEN_BIN" @ launch --type=overlay-main --self --title "tode $(basename "$project")" \
     /bin/sh -lc '
-      "$HOME/.local/bin/tode" --ssh "$@"
+      if [ -n "$3" ]; then
+        root="${TODE_INSTALL_ROOT:-$HOME/.local/lib/tode}"
+        data="${XDG_DATA_HOME:-$HOME/.local/share}/tode"
+        browser="$root/vendor/terminal-browser/bin/terminal-browser"
+        if [ -x "$browser" ] && [ -f "$data/browser-preload.js" ] && [ -f "$data/browser-main.js" ]; then
+          "$browser" open --app-mode --ssh "ssh $1" "$3" \
+            "--preload=$data/browser-preload.js" "--main-script=$data/browser-main.js"
+        else
+          "$HOME/.local/bin/tode" --ssh "ssh $1" --ready-url "$3"
+        fi
+      else
+        "$HOME/.local/bin/tode" --ssh "ssh $1" "$2"
+      fi
       status=$?
       if [ "$status" -ne 0 ]; then
         printf "\ntode could not open %s through SSH target %s (exit %s)\n" \
@@ -57,7 +70,7 @@ if [ -n "${KITTY_LISTEN_ON:-}" ] && [ -n "$KITTEN_BIN" ]; then
         IFS= read -r _ || true
       fi
       exit "$status"
-    ' sh "$TODE_REMOTE_SSH_HOST" "$project" >/dev/null \
+    ' sh "$TODE_REMOTE_SSH_HOST" "$project" "$ready_url" >/dev/null \
     && exit 0
   echo "kitty remote control failed; falling back to pixel mode" >&2
 elif [ -z "${KITTY_WINDOW_ID:-}" ]; then
