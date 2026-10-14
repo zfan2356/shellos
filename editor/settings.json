@@ -15,7 +15,7 @@
     "**/3rd/**": true,
     "**/node_modules/**": true
   },
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.defaultInterpreterPath": "python3",
   "explorer.confirmDelete": false,
   "terminal.integrated.inheritEnv": false,
   "mesonbuild.downloadLanguageServer": true,

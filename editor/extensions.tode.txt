@@ -6,7 +6,6 @@ llvm-vs-code-extensions.vscode-clangd
 ms-python.python
 ms-vscode.cmake-tools
 ms-vscode.cpp-devtools
-narasimapandiyan.jetbrainsmono
 tamasfe.even-better-toml
 vscodevim.vim
 zfan2356.worktree-review

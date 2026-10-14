@@ -61,6 +61,22 @@ Internal scripts such as `deploy-remote-tode.sh`,
 `install-worktree-review.sh` and `patch-terminal-browser.sh` deliberately
 reject direct invocation.
 
+## Fonts and Python defaults
+
+Tode serves its bundled JetBrains Mono font to the editor. The separate
+`narasimapandiyan.jetbrainsmono` activation extension is intentionally absent:
+it prompts on startup, opens a font directory on the headless remote, and
+removes font settings when it deactivates. Canonical editor settings keep
+JetBrains Mono enabled without that extension.
+
+The global Python fallback is `python3` from the host PATH. Repositories with
+a local environment should select `${workspaceFolder}/.venv/bin/python` in
+ignored `.vscode/settings.json`; the environment must match the repository's
+current Python requirement. A global workspace-relative `.venv` path is invalid
+when the opened folder has no environment. Existing interpreter selections
+are saved separately by the Python extension, so select the local interpreter
+once after replacing an environment and reload the editor.
+
 ## Usage
 
 From a connection opened with `kitten ssh`:
