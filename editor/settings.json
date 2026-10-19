@@ -376,8 +376,6 @@
             "meta.definition.variable.name",
             "variable.other.readwrite",
             "variable.parameter",
-            "meta.function-call",
-            "meta.function-call.generic",
             "entity.name.namespace"
           ],
           "settings": {
@@ -390,7 +388,7 @@
             "punctuation.definition.comment"
           ],
           "settings": {
-            "foreground": "#7f849c",
+            "foreground": "#9399b2",
             "fontStyle": "italic"
           }
         },
@@ -408,7 +406,7 @@
             "keyword.operator.sizeof"
           ],
           "settings": {
-            "foreground": "#cf8e6d"
+            "foreground": "#fab387"
           }
         },
         {
@@ -416,7 +414,7 @@
             "keyword.operator"
           ],
           "settings": {
-            "foreground": "#b4bcd6"
+            "foreground": "#94e2d5"
           }
         },
         {
@@ -426,7 +424,7 @@
             "punctuation.definition.string"
           ],
           "settings": {
-            "foreground": "#86b97a"
+            "foreground": "#a6e3a1"
           }
         },
         {
@@ -435,7 +433,7 @@
             "string.quoted.docstring punctuation.definition.string"
           ],
           "settings": {
-            "foreground": "#6f9e7d",
+            "foreground": "#8fd3a0",
             "fontStyle": "italic"
           }
         },
@@ -447,7 +445,7 @@
             "punctuation.definition.template-expression"
           ],
           "settings": {
-            "foreground": "#cf8e6d"
+            "foreground": "#f5c2e7"
           }
         },
         {
@@ -456,15 +454,16 @@
             "constant.character"
           ],
           "settings": {
-            "foreground": "#4fb8c2"
+            "foreground": "#89dceb"
           }
         },
         {
           "scope": [
-            "entity.name.function"
+            "entity.name.function",
+            "meta.function-call.generic"
           ],
           "settings": {
-            "foreground": "#5ea9f5"
+            "foreground": "#89b4fa"
           }
         },
         {
@@ -478,7 +477,7 @@
             "entity.other.inherited-class"
           ],
           "settings": {
-            "foreground": "#a8a8f0"
+            "foreground": "#f9e2af"
           }
         },
         {
@@ -490,7 +489,7 @@
             "entity.name.function.preprocessor"
           ],
           "settings": {
-            "foreground": "#c4be6e"
+            "foreground": "#f5c2e7"
           }
         },
         {
@@ -502,7 +501,7 @@
             "variable.language.this"
           ],
           "settings": {
-            "foreground": "#b877ae"
+            "foreground": "#f38ba8"
           }
         },
         {
@@ -513,7 +512,7 @@
             "meta.object-literal.key"
           ],
           "settings": {
-            "foreground": "#c77dbb"
+            "foreground": "#b4befe"
           }
         },
         {
@@ -521,7 +520,7 @@
             "entity.name.tag"
           ],
           "settings": {
-            "foreground": "#d5b778"
+            "foreground": "#cba6f7"
           }
         },
         {
@@ -529,7 +528,7 @@
             "entity.other.attribute-name"
           ],
           "settings": {
-            "foreground": "#b8bfd6"
+            "foreground": "#f9e2af"
           }
         },
         {
@@ -538,7 +537,7 @@
             "meta.brace"
           ],
           "settings": {
-            "foreground": "#9399b2"
+            "foreground": "#a6adc8"
           }
         },
         {
@@ -554,7 +553,7 @@
             "markup.heading"
           ],
           "settings": {
-            "foreground": "#5ea9f5",
+            "foreground": "#89b4fa",
             "fontStyle": "bold"
           }
         },
@@ -564,7 +563,7 @@
             "markup.link"
           ],
           "settings": {
-            "foreground": "#5ea9f5"
+            "foreground": "#89b4fa"
           }
         },
         {
@@ -573,7 +572,7 @@
             "markup.fenced_code"
           ],
           "settings": {
-            "foreground": "#86b97a"
+            "foreground": "#a6e3a1"
           }
         },
         {
@@ -616,38 +615,38 @@
         "namespace": "#cdd6f4",
         "variable": "#cdd6f4",
         "parameter": "#cdd6f4",
-        "function": "#cdd6f4",
-        "method": "#cdd6f4",
-        "function.declaration": "#5ea9f5",
-        "method.declaration": "#5ea9f5",
-        "function.definition": "#5ea9f5",
-        "method.definition": "#5ea9f5",
-        "class": "#a8a8f0",
-        "struct": "#a8a8f0",
-        "interface": "#a8a8f0",
-        "enum": "#a8a8f0",
-        "type": "#a8a8f0",
-        "typeParameter": "#a8a8f0",
-        "concept": "#a8a8f0",
-        "*.builtin": "#a8a8f0",
-        "*.defaultLibrary": "#a8a8f0",
-        "function.builtin": "#a8a8f0",
-        "class.builtin": "#a8a8f0",
-        "type.builtin": "#a8a8f0",
-        "function.defaultLibrary": "#a8a8f0",
-        "class.defaultLibrary": "#a8a8f0",
-        "decorator": "#c4be6e",
-        "macro": "#c4be6e",
-        "selfParameter": "#b877ae",
-        "clsParameter": "#b877ae",
-        "property": "#c77dbb",
-        "enumMember": "#c77dbb",
-        "variable.classMember": "#c77dbb",
-        "keyword": "#cf8e6d",
-        "number": "#4fb8c2",
-        "string": "#86b97a",
+        "function": "#89b4fa",
+        "method": "#89b4fa",
+        "function.declaration": "#89b4fa",
+        "method.declaration": "#89b4fa",
+        "function.definition": "#89b4fa",
+        "method.definition": "#89b4fa",
+        "class": "#f9e2af",
+        "struct": "#f9e2af",
+        "interface": "#f9e2af",
+        "enum": "#f9e2af",
+        "type": "#f9e2af",
+        "typeParameter": "#f9e2af",
+        "concept": "#f9e2af",
+        "*.builtin": "#f9e2af",
+        "*.defaultLibrary": "#f9e2af",
+        "function.builtin": "#f9e2af",
+        "class.builtin": "#f9e2af",
+        "type.builtin": "#f9e2af",
+        "function.defaultLibrary": "#f9e2af",
+        "class.defaultLibrary": "#f9e2af",
+        "decorator": "#f5c2e7",
+        "macro": "#f5c2e7",
+        "selfParameter": "#f38ba8",
+        "clsParameter": "#f38ba8",
+        "property": "#b4befe",
+        "enumMember": "#b4befe",
+        "variable.classMember": "#b4befe",
+        "keyword": "#fab387",
+        "number": "#89dceb",
+        "string": "#a6e3a1",
         "comment": {
-          "foreground": "#7f849c",
+          "foreground": "#9399b2",
           "italic": true
         }
       }
