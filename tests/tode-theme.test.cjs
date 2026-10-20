@@ -61,7 +61,8 @@ function installTheme(palette) {
   assert.equal(theme.colors["editor.background"], "#1e1f22");
   assert.deepEqual(palette.background, [30, 31, 34]);
   assert.match(fs.readFileSync(path.join(repo, "kitty/current-theme.conf"), "utf8"), /^background #1e1f22$/m);
-  assert.match(fs.readFileSync(path.join(repo, "kitty/kitty.conf"), "utf8"), /^background_opacity 1\.0$/m);
+  assert.match(fs.readFileSync(path.join(repo, "kitty/kitty.conf"), "utf8"), /^background_opacity 0\.82$/m);
+  assert.match(fs.readFileSync(path.join(repo, "kitty/kitty.conf"), "utf8"), /^background_blur 30$/m);
   console.log("Theme persistence, fallback, identity, and palette consistency passed");
 } finally {
   fs.rmSync(work, { recursive: true, force: true });

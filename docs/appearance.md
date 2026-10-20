@@ -8,7 +8,8 @@ The terminal ANSI palette is adapted to match those colors.
 
 The editor and terminal backgrounds are `#1E1F22`. Toolbars and sidebars use
 `#2B2D30`, separators use `#393B40`, and focused controls use `#3574F0`.
-Kitty uses the same opaque background so desktop wallpaper does not tint it.
+Kitty shares the same base color while retaining its existing 0.82 opacity and
+background blur of 30. Color changes do not alter the transparent window style.
 Syntax uses orange keywords, green strings, cyan numbers, blue declarations,
 and muted comments. Ordinary identifiers and function calls stay neutral.
 
