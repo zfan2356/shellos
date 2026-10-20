@@ -80,11 +80,13 @@ cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
 cp "$REPO/scripts/patch-terminal-browser-ssh-reconnect.sh" \
   "$work/patch-terminal-browser-ssh-reconnect.sh"
 cp "$REPO/scripts/patch-tode-ready-url.sh" "$work/patch-tode-ready-url.sh"
+cp "$REPO/scripts/patch-tode-theme.sh" "$work/patch-tode-theme.sh"
 cp "$REPO/scripts/patch-terminal-browser-startup.sh" "$work/patch-terminal-browser-startup.sh"
 cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
 cp "$REPO/scripts/patch-tode-worktree-review-click.sh" \
   "$work/patch-tode-worktree-review-click.sh"
 cp -R "$REPO/dsh" "$work/dsh"
+cp -R "$REPO/tode/theme" "$work/theme"
 printf "TODE_REMOTE_SSH_HOST='%s'\nTODE_REMOTE_PORT='%s'\nTODE_REMOTE_SHELL='%s'\n" \
   "$SSH_HOST" "$PORT" "$remote_shell" > "$work/remote-tode.env"
 
@@ -96,11 +98,13 @@ scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt
   "$work/apply-tode-patches.sh" "$work/patch-terminal-browser.sh" \
   "$work/patch-terminal-browser-ssh-reconnect.sh" \
   "$work/patch-tode-ready-url.sh" \
+  "$work/patch-tode-theme.sh" \
   "$work/patch-terminal-browser-startup.sh" \
   "$work/patch-tode-cmd-right-click.sh" \
   "$work/patch-tode-worktree-review-click.sh" "$work/remote-tode.env" \
   "$SSH_HOST:$remote_work/"
 scp -q -r "$work/dsh" "$SSH_HOST:$remote_work/"
+scp -q -r "$work/theme" "$SSH_HOST:$remote_work/"
 
 ssh "$SSH_HOST" bash -s -- "$remote_work" "$PORT" "$TODE_PIN" <<'REMOTE'
 set -euo pipefail
@@ -113,6 +117,7 @@ bin_dir="$HOME/.local/bin"
 share_dir="$HOME/.local/share/shellos"
 user_dir="$HOME/.local/share/tode/vscode/user-data/User"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/shellos"
+theme_dir="$HOME/.local/share/tode/theme"
 
 mkdir -p "$backup" "$bin_dir" "$share_dir" "$user_dir" "$config_dir"
 for file in "$bin_dir/tode" "$share_dir/tode-remote-wrapper" \
@@ -121,11 +126,15 @@ for file in "$bin_dir/tode" "$share_dir/tode-remote-wrapper" \
   [ ! -e "$file" ] && [ ! -L "$file" ] && continue
   cp -a "$file" "$backup/$(basename "$file")"
 done
+if [[ -d "$theme_dir" ]]; then
+  cp -a "$theme_dir" "$backup/theme"
+fi
 
 chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
   "$staging/patch-terminal-browser.sh" \
   "$staging/patch-terminal-browser-ssh-reconnect.sh" \
   "$staging/patch-tode-ready-url.sh" \
+  "$staging/patch-tode-theme.sh" \
   "$staging/patch-terminal-browser-startup.sh" \
   "$staging/patch-tode-cmd-right-click.sh" \
   "$staging/patch-tode-worktree-review-click.sh"
@@ -138,6 +147,12 @@ SHELLOS_FULL_REINSTALL=1 \
   "$staging/install-tode-release.sh" "$tode_pin"
 "$bin_dir/tode" --serve --prepare
 SHELLOS_FULL_REINSTALL=1 "$staging/apply-tode-patches.sh"
+mkdir -p "$theme_dir"
+for file in palette.json live-theme.json inject.css; do
+  install -m 644 "$staging/theme/$file" "$theme_dir/$file"
+done
+install -m 644 "$staging/theme/palette.json" "$HOME/.local/share/tode/palette.json"
+"$bin_dir/tode" --serve --prepare --palette "$theme_dir/palette.json"
 
 rm -f "$bin_dir/tode-pixel"
 mv "$bin_dir/tode" "$bin_dir/tode-pixel"

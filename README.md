@@ -60,6 +60,7 @@ contain implementation patches or configuration variants.
 | `third-party/kitty` | Pinned kitty upstream source |
 | `third-party/terminal-code` | Pinned tode upstream source |
 | `docs/dsh-tui.md` | dsh CLI and dsh-tui installation, tracked configuration, and secrets policy |
+| `docs/appearance.md` | Shared IDEA Dark colors and persistent local/remote theme behavior |
 
 Canonical editor files are copied from the pulled repository during reinstall,
 not symlinked. The two installed skill directories are copies as well. Editing
