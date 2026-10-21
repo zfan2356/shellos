@@ -266,10 +266,10 @@ grep -Fq 'shellos: cmd-right-click navigateBack v2' \
 grep -Fq 'shellos: cmd-right-click navigateBack v2' \
   "$HOME/.local/lib/tode/dist/browser/mainscript.js"
 workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
-  -path '*/lib/vscode/out/vs/workbench/workbench.web.main.internal.js' \
+  -path '*/lib/vscode/out/vs/code/browser/workbench/workbench.js' \
   2>/dev/null | sort -V | tail -n 1)
 [[ -n "$workbench_bundle" ]]
-grep -Fq 'shellos: worktree-review Explorer atomic diff v2' "$workbench_bundle"
+grep -Fq 'shellos: worktree-review Explorer atomic diff v3' "$workbench_bundle"
 REMOTE_VERIFY
 
 # dsh-tui rides the same deployment: pinned npm packages, the tracked dsh

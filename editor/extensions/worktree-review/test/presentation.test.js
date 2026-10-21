@@ -92,6 +92,23 @@ test("a selected source tab is reviewed before activeTextEditor catches up", asy
   assert.equal(f.group.activeTab.input.modified.fsPath, "/repo/b.py");
 });
 
+test("an old editor is not reopened while the active tab is temporarily absent", async () => {
+  const f = fixture();
+  const oldEditor = f.vscode.window.activeTextEditor;
+  f.group.activeTab = undefined;
+  await f.controller.handleActiveEditor(oldEditor);
+  await f.controller.openQueue;
+  assert.deepEqual(f.opened, []);
+});
+
+test("a non-text tab cannot reopen the previous review document", async () => {
+  const f = fixture();
+  f.group.activeTab = { input: {} };
+  await f.controller.handleActiveEditor(f.vscode.window.activeTextEditor);
+  await f.controller.openQueue;
+  assert.deepEqual(f.opened, []);
+});
+
 test("a source selection is handled after its tab state catches up", async () => {
   const f = fixture();
   const selectedEditor = f.editor("b.py");

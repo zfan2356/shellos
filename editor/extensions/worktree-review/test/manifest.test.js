@@ -144,10 +144,10 @@ test("Explorer resolves changed files into one atomic diff open", () => {
     /options\.sideBySide[\s\S]*?vscode\.ViewColumn\.Beside[\s\S]*?vscode\.ViewColumn\.Active[\s\S]*?"_workbench\.diff"[\s\S]*?\[viewColumn, editorOptions\]/
   );
   assert.doesNotMatch(scmSource, /"vscode\.diff"/);
-  assert.match(patchSource, /Explorer atomic diff v2/);
+  assert.match(patchSource, /Explorer atomic diff v3/);
   assert.match(
     patchSource,
-    /original:\{resource:shellosReviewInput\.original\}[\s\S]*?modified:\{resource:shellosReviewInput\.modified\}/
+    /original:\{resource:l\.resource\.constructor\.revive\(shellosReviewInput\.original\)\}[\s\S]*?modified:\{resource:l\.resource\.constructor\.revive\(shellosReviewInput\.modified\)\}/
   );
   assert.match(
     extensionSource,

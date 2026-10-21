@@ -486,7 +486,7 @@ class ReviewPresentationController {
     }
 
     const activeInput = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-    const uri = activeInput?.uri || editor?.document?.uri;
+    const uri = activeInput?.uri;
     if (!uri || uri.scheme !== "file") {
       return;
     }

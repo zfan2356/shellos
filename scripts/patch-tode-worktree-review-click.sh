@@ -15,16 +15,22 @@ if [[ -n "$MODE" && "$MODE" != "--check" && "$MODE" != "--reapply" ]]; then
 fi
 
 WORKBENCH="${TODE_WORKBENCH_BUNDLE:-}"
+WORKBENCHES=()
 if [[ -z "$WORKBENCH" ]]; then
   CODE_SERVER_ROOT="${TODE_CODE_SERVER_ROOT:-$HOME/.local/share/tode/code-server}"
   WORKBENCH=$(find "$CODE_SERVER_ROOT" -type f \
-    -path '*/lib/vscode/out/vs/workbench/workbench.web.main.internal.js' \
+    -path '*/lib/vscode/out/vs/code/browser/workbench/workbench.js' \
     2>/dev/null | sort -V | tail -n 1)
+  if [[ -n "$WORKBENCH" ]]; then
+    INTERNAL="${WORKBENCH%/vs/code/browser/workbench/workbench.js}/vs/workbench/workbench.web.main.internal.js"
+    [[ ! -f "$INTERNAL" ]] || WORKBENCHES+=("$INTERNAL")
+  fi
 fi
 [[ -n "$WORKBENCH" && -f "$WORKBENCH" ]] || {
   echo "Tode workbench bundle not found" >&2
   exit 1
 }
+WORKBENCHES+=("$WORKBENCH")
 
 NODE=$(command -v node || true)
 if [[ -z "$NODE" ]]; then
@@ -34,12 +40,13 @@ if [[ -z "$NODE" ]]; then
 fi
 [[ -n "$NODE" ]] || { echo "node not found" >&2; exit 1; }
 
+for WORKBENCH in "${WORKBENCHES[@]}"; do
 "$NODE" - "$WORKBENCH" "$MODE" <<'JS'
 const fs = require("fs");
 const [target, mode] = process.argv.slice(2);
-const mark = "/* shellos: worktree-review Explorer atomic diff v2 */";
+const mark = "/* shellos: worktree-review Explorer atomic diff v3 */";
 const anchor = 'this.delegate?.willOpenElement(c.browserEvent),await this.editorService.openEditor({resource:l.resource,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}},c.sideBySide?Kn:cr)';
-const replacement = 'this.delegate?.willOpenElement(c.browserEvent);' + mark + 'let shellosReviewInput;try{shellosReviewInput=await this.commandService.executeCommand("worktreeReview.resolveExplorerOpen",l.resource,{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,sideBySide:c.sideBySide})}catch{}let shellosEditorInput=shellosReviewInput?{original:{resource:shellosReviewInput.original},modified:{resource:shellosReviewInput.modified},label:shellosReviewInput.label,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}}:{resource:l.resource,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}};await this.editorService.openEditor(shellosEditorInput,c.sideBySide?Kn:cr)';
+const replacement = 'this.delegate?.willOpenElement(c.browserEvent);' + mark + 'let shellosReviewInput;try{shellosReviewInput=await this.commandService.executeCommand("worktreeReview.resolveExplorerOpen",l.resource,{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,sideBySide:c.sideBySide})}catch{}let shellosEditorInput=shellosReviewInput?{original:{resource:l.resource.constructor.revive(shellosReviewInput.original)},modified:{resource:l.resource.constructor.revive(shellosReviewInput.modified)},label:shellosReviewInput.label,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}}:{resource:l.resource,options:{preserveFocus:c.editorOptions.preserveFocus,pinned:c.editorOptions.pinned,source:1}};await this.editorService.openEditor(shellosEditorInput,c.sideBySide?Kn:cr)';
 
 function occurrences(source, needle) {
   return source.split(needle).length - 1;
@@ -55,7 +62,7 @@ function verify(source) {
   if (occurrences(source, 'worktreeReview.resolveExplorerOpen') !== 1) {
     throw new Error(`Worktree Review Explorer resolver is missing or duplicated in ${target}`);
   }
-  if (occurrences(source, 'original:{resource:shellosReviewInput.original}') !== 1) {
+  if (occurrences(source, 'original:{resource:l.resource.constructor.revive(shellosReviewInput.original)}') !== 1) {
     throw new Error(`Worktree Review atomic diff input is missing or duplicated in ${target}`);
   }
 }
@@ -99,3 +106,4 @@ verify(patched);
 fs.writeFileSync(target, patched);
 console.log(`patched Worktree Review Explorer atomic diff: ${target}`);
 JS
+done
