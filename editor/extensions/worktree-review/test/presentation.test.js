@@ -119,3 +119,19 @@ test("events from either side of the active diff do not reopen it", async () => 
   assert.deepEqual(f.opened, []);
   assert.equal(f.controller.reviewTab, f.group.activeTab);
 });
+
+test("Explorer also waits for a review opened by the Git refresh", async () => {
+  const f = fixture();
+  let release;
+  f.controller.branchScm.resolveChangeForUri = async () => {
+    f.controller.openQueue = new Promise(resolve => { release = resolve; });
+    return f.targets.get("b.py");
+  };
+  let resolved = false;
+  const switching = f.controller.resolveExplorerOpen(f.uri("file", "/repo/b.py"))
+    .then(value => { resolved = true; return value; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(resolved, false);
+  release();
+  assert.equal((await switching).modified.fsPath, "/repo/b.py");
+});

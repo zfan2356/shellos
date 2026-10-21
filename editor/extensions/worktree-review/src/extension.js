@@ -541,8 +541,8 @@ class ReviewPresentationController {
       return undefined;
     }
 
-    await this.openQueue;
     const target = await this.branchScm.resolveChangeForUri(uri);
+    await this.openQueue;
     if (!target) {
       return undefined;
     }
