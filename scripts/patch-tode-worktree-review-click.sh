@@ -52,6 +52,25 @@ function occurrences(source, needle) {
   return source.split(needle).length - 1;
 }
 
+function updateBrowserEntry() {
+  if (!target.endsWith('/vs/code/browser/workbench/workbench.js')) return;
+  const htmlPath = target.replace(/\.js$/, '.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const entry = '/workbench.js?shellos-review=3"';
+  if (mode === '--check') {
+    if (occurrences(html, entry) !== 1) {
+      throw new Error(`Worktree Review browser cache version is missing in ${htmlPath}`);
+    }
+    return;
+  }
+  const pattern = /\/workbench\.js(?:\?shellos-review=\d+)?"/g;
+  if ((html.match(pattern) || []).length !== 1) {
+    throw new Error(`expected one browser script entry in ${htmlPath}`);
+  }
+  const updated = html.replace(pattern, entry);
+  if (updated !== html) fs.writeFileSync(htmlPath, updated);
+}
+
 function verify(source) {
   if (occurrences(source, mark) !== 1) {
     throw new Error(`expected one Worktree Review Explorer patch marker in ${target}`);
@@ -72,12 +91,14 @@ const backup = `${target}.orig`;
 
 if (mode === "--check") {
   verify(source);
+  updateBrowserEntry();
   console.log(`verified Worktree Review Explorer atomic diff patch: ${target}`);
   process.exit(0);
 }
 
 if (source.includes(mark) && mode !== "--reapply") {
   verify(source);
+  updateBrowserEntry();
   console.log(`Worktree Review Explorer atomic diff patch already applied: ${target}`);
   process.exit(0);
 }
@@ -104,6 +125,7 @@ if (count !== 1) {
 const patched = source.replace(anchor, replacement);
 verify(patched);
 fs.writeFileSync(target, patched);
+updateBrowserEntry();
 console.log(`patched Worktree Review Explorer atomic diff: ${target}`);
 JS
 done

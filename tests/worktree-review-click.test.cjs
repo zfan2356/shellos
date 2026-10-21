@@ -19,6 +19,7 @@ function fixture(t) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, `async function click(c,l){${anchor}}`);
   }
+  fs.writeFileSync(entry.replace(/\.js$/, '.html'), '<script type="module" src="{{WORKBENCH_WEB_BASE_URL}}/out/vs/code/browser/workbench/workbench.js"></script>');
   const run = (...args) => cp.spawnSync('bash', [script, ...args], {
     encoding: 'utf8', env: { ...process.env, PATH: `${path.dirname(process.execPath)}:${process.env.PATH}`,
       SHELLOS_FULL_REINSTALL: '1', TODE_CODE_SERVER_ROOT: root, TODE_WORKBENCH_BUNDLE: '' },
@@ -33,9 +34,16 @@ test('patches the served browser entry as well as the internal bundle', t => {
     assert.match(fs.readFileSync(file, 'utf8'), /Explorer atomic diff v3/);
   }
   const once = fs.readFileSync(f.entry, 'utf8');
+  const html = f.entry.replace(/\.js$/, '.html');
+  assert.match(fs.readFileSync(html, 'utf8'), /workbench\.js\?shellos-review=3/);
   assert.equal(f.run().status, 0);
   assert.equal(fs.readFileSync(f.entry, 'utf8'), once);
   assert.equal(f.run('--check').status, 0);
+  const versioned = fs.readFileSync(html, 'utf8');
+  fs.writeFileSync(html, versioned.replace('?shellos-review=3', ''));
+  assert.notEqual(f.run('--check').status, 0);
+  assert.equal(f.run().status, 0);
+  assert.equal(fs.readFileSync(html, 'utf8'), versioned);
   fs.writeFileSync(f.entry, `async function click(c,l){${anchor}}`);
   assert.notEqual(f.run('--check').status, 0);
 });

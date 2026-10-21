@@ -265,6 +265,7 @@ workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
   2>/dev/null | sort -V | tail -n 1)
 [[ -n "$workbench_bundle" ]]
 grep -Fq 'shellos: worktree-review Explorer atomic diff v3' "$workbench_bundle"
+grep -Fq '/workbench.js?shellos-review=3"' "${workbench_bundle%.js}.html"
 [[ "$(defaults read dev.zenbu.terminal-browser NSAppSleepDisabled)" == 1 ]]
 for skill_name in shellos shellos-bootstrap; do
   for skill_root in "$HOME/.codex/skills" "$HOME/.claude/skills"; do

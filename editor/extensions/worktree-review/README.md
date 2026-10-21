@@ -51,7 +51,9 @@ In ShellOS/Tode, a tracked Explorer pre-open hook asks the extension to resolve
 a decorated changed file into its base/current URI pair. Explorer then opens
 that pair as one Diff editor input, so no source editor is created or closed in
 between. The patch targets the `workbench.js` loaded by code-server’s HTML entry
-and revives the URI objects returned by the remote extension host. The resolver waits for initial and pending Git refreshes before it
+and revives the URI objects returned by the remote extension host. Its script URL
+includes a patch version so browser caches cannot keep the old opening behavior.
+The resolver waits for initial and pending Git refreshes before it
 decides whether a file changed. It also waits for an in-flight Review open before
 resolving the next selection. The active tab owns file selection, so a delayed
 editor event cannot reopen the previous file. The tab resource also remains

@@ -270,6 +270,7 @@ workbench_bundle=$(find "$HOME/.local/share/tode/code-server" -type f \
   2>/dev/null | sort -V | tail -n 1)
 [[ -n "$workbench_bundle" ]]
 grep -Fq 'shellos: worktree-review Explorer atomic diff v3' "$workbench_bundle"
+grep -Fq '/workbench.js?shellos-review=3"' "${workbench_bundle%.js}.html"
 REMOTE_VERIFY
 
 # dsh-tui rides the same deployment: pinned npm packages, the tracked dsh
