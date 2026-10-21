@@ -53,8 +53,10 @@ that pair as one Diff editor input, so no source editor is created or closed in
 between. The resolver waits for initial and pending Git refreshes before it
 decides whether a file changed. It also waits for an in-flight Review open before
 resolving the next selection. The active tab owns file selection, so a delayed
-editor event cannot reopen the previous file. Other editors use the extension
-listener and tab updates as a compatibility fallback.
+editor event cannot reopen the previous file. The tab resource also remains
+authoritative while the active text editor is absent or still points to the
+previous file. Other editors use the extension listener, tab updates, and active
+group changes as a compatibility fallback.
 
 ## Usage
 

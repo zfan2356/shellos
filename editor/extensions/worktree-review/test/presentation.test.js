@@ -67,7 +67,7 @@ test("a late editor event cannot undo an Explorer diff switch", async () => {
   assert.equal(f.group.activeTab.input.modified.fsPath, "/repo/b.py");
 });
 
-test("a late editor event cannot replace the newly selected source tab", async () => {
+test("a late editor event reviews the selected source tab instead of the old document", async () => {
   const f = fixture();
   const oldEditor = f.vscode.window.activeTextEditor;
   f.group.activeTab = { input: { uri: f.uri("file", "/repo/b.py") } };
@@ -76,8 +76,20 @@ test("a late editor event cannot replace the newly selected source tab", async (
   await f.controller.handleActiveEditor(oldEditor);
   await f.controller.openQueue;
 
-  assert.deepEqual(f.opened, []);
-  assert.equal(f.group.activeTab.input.uri.fsPath, "/repo/b.py");
+  assert.deepEqual(f.opened, ["b.py"]);
+  assert.equal(f.group.activeTab.input.modified.fsPath, "/repo/b.py");
+});
+
+test("a selected source tab is reviewed before activeTextEditor catches up", async () => {
+  const f = fixture();
+  f.group.activeTab = { input: { uri: f.uri("file", "/repo/b.py") } };
+  f.group.tabs.push(f.group.activeTab);
+  f.vscode.window.activeTextEditor = undefined;
+
+  await f.controller.handleActiveEditor(undefined);
+
+  assert.deepEqual(f.opened, ["b.py"]);
+  assert.equal(f.group.activeTab.input.modified.fsPath, "/repo/b.py");
 });
 
 test("a source selection is handled after its tab state catches up", async () => {

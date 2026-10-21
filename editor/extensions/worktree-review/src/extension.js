@@ -51,6 +51,9 @@ async function activate(context) {
     vscode.window.tabGroups.onDidChangeTabs(() =>
       presentation.handleActiveEditor(vscode.window.activeTextEditor)
     ),
+    vscode.window.tabGroups.onDidChangeTabGroups(() =>
+      presentation.handleActiveEditor(vscode.window.activeTextEditor)
+    ),
     vscode.commands.registerCommand("worktreeReview.refreshBranchChanges", () =>
       branchScm.refreshAll(true)
     ),
@@ -464,12 +467,7 @@ class ReviewPresentationController {
   }
 
   async handleActiveEditor(editor) {
-    if (!editor || !this.enabled || this.openingReview) {
-      return;
-    }
-
-    const document = editor.document;
-    if (!document) {
+    if (!this.enabled || this.openingReview) {
       return;
     }
 
@@ -488,15 +486,12 @@ class ReviewPresentationController {
     }
 
     const activeInput = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
-    if (activeInput?.uri && !uriEquals(activeInput.uri, document.uri)) {
+    const uri = activeInput?.uri || editor?.document?.uri;
+    if (!uri || uri.scheme !== "file") {
       return;
     }
 
-    if (document.uri.scheme !== "file") {
-      return;
-    }
-
-    const target = this.branchScm.findChangeForUri(document.uri);
+    const target = this.branchScm.findChangeForUri(uri);
     if (!target) {
       return;
     }
@@ -505,7 +500,7 @@ class ReviewPresentationController {
     if (this.diffLayout === "source") {
       const tabGroups = vscode.window.tabGroups;
       this.reviewTab = tabGroups && tabGroups.activeTabGroup.activeTab;
-      this.reviewSourceUri = document.uri;
+      this.reviewSourceUri = uri;
       return;
     }
 
