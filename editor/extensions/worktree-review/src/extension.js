@@ -48,6 +48,9 @@ async function activate(context) {
     vscode.window.onDidChangeActiveTextEditor((editor) =>
       presentation.handleActiveEditor(editor)
     ),
+    vscode.window.tabGroups.onDidChangeTabs(() =>
+      presentation.handleActiveEditor(vscode.window.activeTextEditor)
+    ),
     vscode.commands.registerCommand("worktreeReview.refreshBranchChanges", () =>
       branchScm.refreshAll(true)
     ),
@@ -470,7 +473,8 @@ class ReviewPresentationController {
       return;
     }
 
-    if (this.isActiveReviewDiffDocument(document.uri)) {
+    // Tab selection can advance before the old editor's event reaches this host.
+    if (this.isActiveReviewDiffTab()) {
       const tabGroups = vscode.window.tabGroups;
       const activeTab = tabGroups && tabGroups.activeTabGroup.activeTab;
       const targetUri =
@@ -480,6 +484,11 @@ class ReviewPresentationController {
         this.currentTarget = target;
         this.reviewTab = activeTab;
       }
+      return;
+    }
+
+    const activeInput = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+    if (activeInput?.uri && !uriEquals(activeInput.uri, document.uri)) {
       return;
     }
 
@@ -532,6 +541,7 @@ class ReviewPresentationController {
       return undefined;
     }
 
+    await this.openQueue;
     const target = await this.branchScm.resolveChangeForUri(uri);
     if (!target) {
       return undefined;
@@ -625,7 +635,7 @@ class ReviewPresentationController {
     }
   }
 
-  isActiveReviewDiffDocument(uri) {
+  isActiveReviewDiffTab() {
     const tabGroups = vscode.window.tabGroups;
     const activeTab = tabGroups && tabGroups.activeTabGroup.activeTab;
     const input = activeTab && activeTab.input;
@@ -639,7 +649,7 @@ class ReviewPresentationController {
       return false;
     }
 
-    return uriEquals(input.original, uri) || uriEquals(input.modified, uri);
+    return true;
   }
 
   updateStatusBar() {

@@ -51,8 +51,10 @@ In ShellOS/Tode, a tracked Explorer pre-open hook asks the extension to resolve
 a decorated changed file into its base/current URI pair. Explorer then opens
 that pair as one Diff editor input, so no source editor is created or closed in
 between. The resolver waits for initial and pending Git refreshes before it
-decides whether a file changed. Other editors use the extension listener as a
-compatibility fallback.
+decides whether a file changed. It also waits for an in-flight Review open before
+resolving the next selection. The active tab owns file selection, so a delayed
+editor event cannot reopen the previous file. Other editors use the extension
+listener and tab updates as a compatibility fallback.
 
 ## Usage
 

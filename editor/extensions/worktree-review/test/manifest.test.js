@@ -171,6 +171,17 @@ test("Explorer resolution waits for initial and scheduled change refreshes", () 
   );
 });
 
+test("tab updates retry editor selection after editor and tab events arrive out of order", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.js"),
+    "utf8"
+  );
+  assert.match(
+    source,
+    /tabGroups\.onDidChangeTabs\(\(\) =>\s*presentation\.handleActiveEditor\(vscode\.window\.activeTextEditor\)/
+  );
+});
+
 test("review opens the active change or the first current-branch change", () => {
   const extensionSource = fs.readFileSync(
     path.join(__dirname, "..", "src", "extension.js"),
