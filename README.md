@@ -40,6 +40,7 @@ contain implementation patches or configuration variants.
 | Path | Purpose |
 |---|---|
 | `kitty/` | Canonical kitty configuration and theme |
+| `vim/` | Vim file detection for YAML Jinja templates, installed on both hosts |
 | `editor/` | Canonical editor settings, keybindings, extension inventory, and Worktree Review source |
 | `tode/` | Canonical tode shortcuts and theme |
 | `dsh/` | Pinned dsh CLI and dsh-tui plugin versions plus the tracked harness configuration |

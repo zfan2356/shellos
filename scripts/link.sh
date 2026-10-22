@@ -24,3 +24,4 @@ install_config "$REPO/editor/settings.json"            ~/.local/share/tode/vscod
 install_config "$REPO/editor/keybindings.tode.json"    ~/.local/share/tode/vscode/user-data/User/keybindings.json
 install_config "$REPO/editor/settings.json"            ~/Library/Application\ Support/Cursor/User/settings.json
 install_config "$REPO/editor/keybindings.cursor.json"  ~/Library/Application\ Support/Cursor/User/keybindings.json
+install_config "$REPO/vim/ftdetect/shellos.vim"          ~/.vim/ftdetect/shellos.vim

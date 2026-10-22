@@ -28,6 +28,15 @@ the terminal palette. Reopening a window therefore preserves the chosen UI
 and syntax colors. Installations without that file retain Tode's upstream
 palette-based behavior. A malformed canonical theme fails visibly.
 
+Vim uses its built-in YAML syntax for `.yaml.j2` and `.yml.j2` files.
+The full installer copies
+`vim/ftdetect/shellos.vim` into `~/.vim/ftdetect/` on both hosts without replacing
+the existing vimrc, mouse settings, or clipboard mappings. This requires Vim's
+filetype detection and syntax highlighting to be enabled (as in `defaults.vim`).
+Reopen an already loaded template after installation to detect its filetype.
+Verify the detection and actual YAML syntax groups with
+`bash tests/vim-yaml.test.sh`.
+
 Validate changes in a disposable installation with
 `node tests/tode-theme.test.cjs`, then follow the normal commit, push, pull,
 and complete reinstall workflow. Live installation files are generated outputs.

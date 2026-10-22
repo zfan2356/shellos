@@ -88,6 +88,7 @@ cp "$REPO/scripts/patch-tode-worktree-review-click.sh" \
   "$work/patch-tode-worktree-review-click.sh"
 cp -R "$REPO/dsh" "$work/dsh"
 cp -R "$REPO/tode/theme" "$work/theme"
+cp -R "$REPO/vim" "$work/vim"
 printf "TODE_REMOTE_SSH_HOST='%s'\nTODE_REMOTE_PORT='%s'\nTODE_REMOTE_SHELL='%s'\n" \
   "$SSH_HOST" "$PORT" "$remote_shell" > "$work/remote-tode.env"
 
@@ -107,6 +108,7 @@ scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt
   "$SSH_HOST:$remote_work/"
 scp -q -r "$work/dsh" "$SSH_HOST:$remote_work/"
 scp -q -r "$work/theme" "$SSH_HOST:$remote_work/"
+scp -q -r "$work/vim" "$SSH_HOST:$remote_work/"
 
 ssh "$SSH_HOST" bash -s -- "$remote_work" "$PORT" "$TODE_PIN" <<'REMOTE'
 set -euo pipefail
@@ -124,6 +126,7 @@ theme_dir="$HOME/.local/share/tode/theme"
 mkdir -p "$backup" "$bin_dir" "$share_dir" "$user_dir" "$config_dir"
 for file in "$bin_dir/tode" "$share_dir/tode-remote-wrapper" \
   "$user_dir/settings.json" "$user_dir/keybindings.json" \
+  "$HOME/.vim/ftdetect/shellos.vim" \
   "$config_dir/remote-tode.env"; do
   [ ! -e "$file" ] && [ ! -L "$file" ] && continue
   cp -a "$file" "$backup/$(basename "$file")"
@@ -164,6 +167,9 @@ install -m 755 "$staging/tode-remote-wrapper" "$share_dir/tode-remote-wrapper"
 install -m 644 "$staging/settings.json" "$user_dir/settings.json"
 install -m 644 "$staging/keybindings.json" "$user_dir/keybindings.json"
 install -m 600 "$staging/remote-tode.env" "$config_dir/remote-tode.env"
+mkdir -p "$HOME/.vim/ftdetect"
+install -m 644 "$staging/vim/ftdetect/shellos.vim" "$HOME/.vim/ftdetect/shellos.vim"
+cmp "$staging/vim/ftdetect/shellos.vim" "$HOME/.vim/ftdetect/shellos.vim"
 ln -sfn "$share_dir/tode-remote-wrapper" "$bin_dir/tode"
 
 tmux kill-session -t "code-server-$port" 2>/dev/null || true
