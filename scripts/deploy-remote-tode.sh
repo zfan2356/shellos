@@ -82,6 +82,7 @@ cp "$REPO/scripts/patch-terminal-browser-ssh-reconnect.sh" \
 cp "$REPO/scripts/patch-tode-ready-url.sh" "$work/patch-tode-ready-url.sh"
 cp "$REPO/scripts/patch-tode-theme.sh" "$work/patch-tode-theme.sh"
 cp "$REPO/scripts/patch-terminal-browser-startup.sh" "$work/patch-terminal-browser-startup.sh"
+cp "$REPO/scripts/patch-terminal-browser-drag.sh" "$work/patch-terminal-browser-drag.sh"
 cp "$REPO/scripts/patch-tode-cmd-right-click.sh" "$work/patch-tode-cmd-right-click.sh"
 cp "$REPO/scripts/patch-tode-worktree-review-click.sh" \
   "$work/patch-tode-worktree-review-click.sh"
@@ -100,6 +101,7 @@ scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt
   "$work/patch-tode-ready-url.sh" \
   "$work/patch-tode-theme.sh" \
   "$work/patch-terminal-browser-startup.sh" \
+  "$work/patch-terminal-browser-drag.sh" \
   "$work/patch-tode-cmd-right-click.sh" \
   "$work/patch-tode-worktree-review-click.sh" "$work/remote-tode.env" \
   "$SSH_HOST:$remote_work/"
@@ -136,6 +138,7 @@ chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
   "$staging/patch-tode-ready-url.sh" \
   "$staging/patch-tode-theme.sh" \
   "$staging/patch-terminal-browser-startup.sh" \
+  "$staging/patch-terminal-browser-drag.sh" \
   "$staging/patch-tode-cmd-right-click.sh" \
   "$staging/patch-tode-worktree-review-click.sh"
 if [[ -x "$bin_dir/tode" ]]; then

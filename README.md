@@ -49,6 +49,7 @@ contain implementation patches or configuration variants.
 | `scripts/apply-tode-patches.sh` | Internal dispatcher for all tracked Tode patches |
 | `scripts/assert-repo-first.sh` | Internal published-checkout assertion |
 | `scripts/patch-terminal-browser.sh` | Tracked renderer patch, applied only during full reinstall |
+| `scripts/patch-terminal-browser-drag.sh` | Tracked native drag forwarding for editor splits and tab moves |
 | `scripts/patch-terminal-browser-ssh-reconnect.sh` | Tracked per-window SSH proxy recovery and emergency-exit patch, applied only during full reinstall |
 | `scripts/patch-tode-cmd-right-click.sh` | Tracked navigation patch, applied only during full reinstall |
 | `scripts/patch-tode-worktree-review-click.sh` | Tracked Explorer resolver that atomically opens Worktree Review Diff inputs |
@@ -98,8 +99,36 @@ publishing, run:
 ```bash
 ./scripts/redline.sh
 npm --prefix editor/extensions/worktree-review test
+node tests/terminal-browser-drag.test.cjs
 ```
 
 After commit and push, return to the formal checkout and run the complete
 reinstaller. Never validate a proposed fix by changing an installed artifact;
 validate repository code and then validate the full reinstall result.
+
+## Dragging files into split editors
+
+Drag an Explorer file or editor tab to the right edge of the **editor area**,
+then release when the split preview appears. Dropping in the center opens or
+moves the file into that group. The right sidebar is a separate drop target.
+Escape or changing focus cancels a drag.
+
+The terminal browser forwards mouse input but needs an explicit Chromium drag
+bridge for its offscreen surface. The tracked drag patch intercepts native
+sessions and forwards their original payload, coordinates, and modifiers using
+`Input.dispatchDragEvent`; VS Code retains control of previews and editor groups.
+It is installed and verified by the full local/remote reinstall dispatcher.
+This covers in-window file and tab drags, not dragging a Finder file into kitty.
+
+The Electron regression test uses a disposable profile and patched bundle copy:
+
+```bash
+ELECTRON_BIN=/path/to/electron node tests/electron-drag.test.cjs
+```
+
+Set `TODE_BROWSER_BUNDLE` to a pinned `browser/dist/main.js` to validate the actual
+release anchors instead of the fixture. For full editor acceptance, point
+`SHELLOS_DRAG_TEST_URL` at a disposable code-server workspace containing
+`first.py` and `second.py`. The test checks the split preview, two resulting
+editor groups, and moving a tab back into the other group. Never use a live
+workspace for this test: it changes that workspace's editor layout.
