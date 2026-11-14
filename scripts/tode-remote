@@ -89,8 +89,8 @@ def main():
     try:
         result = subprocess.run([
             str(root / "vendor/terminal-browser/bin/terminal-browser"),
-            "open", "--app-mode", "--partition", partition,
-            "--preload", str(data / "browser-preload.js"), "--main-script", filename, url,
+            "open", "--app-mode", f"--partition={partition}",
+            f"--preload={data / 'browser-preload.js'}", f"--main-script={filename}", url,
         ])
         raise SystemExit(result.returncode)
     finally:

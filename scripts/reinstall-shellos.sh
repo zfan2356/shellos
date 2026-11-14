@@ -81,6 +81,7 @@ update_homebrew() {
 }
 update_homebrew
 export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
 
 KITTY_PIN=$(git -C "$REPO/third-party/kitty" describe --tags --exact-match)
 TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-match)

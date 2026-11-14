@@ -74,6 +74,10 @@ Existing SSH sessions must be closed separately if they were opened under an
 older configuration. Deployment SSH/SCP commands explicitly disable forwarding,
 proxies, jump hosts and shared control connections.
 
+Tode release archives are cached and their pinned checksums are rechecked on
+every reinstall. The startup patch now targets the native CLI directly and
+does not depend on the retired SSH reconnect patch.
+
 The installer uses the pinned Kitty release archive and SHA-256 even when
 Homebrew's current catalog is newer. This keeps a transport fix from upgrading
 Kitty implicitly. The checksum recorded for v0.49.2 is the previously installed
@@ -88,7 +92,8 @@ to a disposable release copy and verify its `--check` mode.
 
 After deployment verify the native HTTPS listener, source-restricted firewall
 chain, unauthenticated rejection, authenticated workbench and WebSocket,
-certificate mismatch rejection, real Kitty rendering and absence of new
+certificate mismatch rejection (also exercised with the real Electron binary
+by `tests/electron-direct-https.test.cjs`), real Kitty rendering and absence of new
 SSH forwarding processes. A successful SSH bootstrap alone is not proof of
 editor connectivity. If the internal service port is blocked, report that
 network requirement without attempting a tunnel.

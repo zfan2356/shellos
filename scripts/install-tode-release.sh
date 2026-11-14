@@ -63,15 +63,24 @@ cleanup() {
 }
 trap cleanup EXIT
 
-TARBALL="$WORK/tode.tar.gz"
+CACHE="$HOME/.cache/shellos/releases"
+mkdir -p "$CACHE"
+TARBALL="$CACHE/tode-$VERSION-$TARGET.tar.gz"
 URL="https://github.com/zenbu-labs/terminal-code/releases/download/$VERSION/tode-$TARGET.tar.gz"
 echo "installing tode $VERSION for $TARGET from GitHub"
-curl -fL --retry 3 --retry-delay 2 --progress-bar "$URL" -o "$TARBALL"
-if command -v sha256sum >/dev/null 2>&1; then
-  printf '%s  %s\n' "$SHA256" "$TARBALL" | sha256sum -c - >/dev/null
-else
-  printf '%s  %s\n' "$SHA256" "$TARBALL" | shasum -a 256 -c - >/dev/null
+verify_archive() {
+  [[ -f "$TARBALL" ]] || return 1
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s  %s\n' "$SHA256" "$TARBALL" | sha256sum -c - >/dev/null 2>&1
+  else
+    printf '%s  %s\n' "$SHA256" "$TARBALL" | shasum -a 256 -c - >/dev/null 2>&1
+  fi
+}
+if ! verify_archive; then
+  curl -fL --retry 3 --retry-delay 2 --progress-bar "$URL" -o "$WORK/tode.tar.gz"
+  mv "$WORK/tode.tar.gz" "$TARBALL"
 fi
+verify_archive
 
 APP="$HOME/.local/lib/tode"
 BIN_HOME="${XDG_BIN_HOME:-$HOME/.local/bin}"

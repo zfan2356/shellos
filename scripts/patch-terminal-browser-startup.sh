@@ -28,9 +28,9 @@ if (process.argv[3] === "--check") {
     sources[0] = replaceOnce(sources[0], "async function openHere(argv) {", `async function openHere(argv) {
   ${mark}
   const daemonReady = daemonSocket().catch(() => null);`);
-    sources[0] = replaceOnce(sources[0], `  return attachHere(argv, tunnel).catch`, `  const warmed = await daemonReady;
+    sources[0] = replaceOnce(sources[0], `  return attachHere(argv).catch`, `  const warmed = await daemonReady;
   warmed?.destroy();
-  return attachHere(argv, tunnel).catch`);
+  return attachHere(argv).catch`);
     sources[0] = replaceOnce(sources[0], "      await sleep2(200);", "      await sleep2(25);");
   }
   if (!sources[1].includes(mark)) {
