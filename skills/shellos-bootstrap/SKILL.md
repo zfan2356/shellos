@@ -102,16 +102,13 @@ installation (`dsh-tui doctor` must report the pinned profile, the tracked
 settings must be byte-identical, and the launcher symlink must resolve into
 the profile).
 
-Test the remote UI from a kitty-managed connection:
+Test from a local Kitty shell:
 
 ```bash
-kitten ssh <ssh-alias>
-tode <project-path>
+tode-remote <ssh-alias> /absolute/remote/project
 ```
 
-`KITTY_LISTEN_ON` must be present remotely. Plain `ssh` cannot provide the
-forwarded kitty control channel needed for the local overlay. Worktree Review
-follows the opened repository and current Git branch automatically, and opens
-the saved layout immediately when enabled. Tode `v0.2.0` does not forward a
-trailing `--review` through its native SSH transport. See
-`docs/remote-server.md`.
+The launcher uses ordinary SSH for lifecycle and native HTTPS/WSS for the
+editor. Kitty control forwarding and the retired Tode SSH transport are
+disabled. Verify certificate pinning, login and the real editor window; a
+successful SSH command is not sufficient. See `docs/remote-server.md`.

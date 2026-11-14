@@ -21,7 +21,7 @@ fi
 
 if [[ "$MODE" == "--check" ]]; then
   "$SCRIPT_DIR/patch-terminal-browser.sh" --check
-  "$SCRIPT_DIR/patch-terminal-browser-ssh-reconnect.sh" --check
+  "$SCRIPT_DIR/patch-tode-direct.sh" --check
   "$SCRIPT_DIR/patch-terminal-browser-startup.sh" --check
   "$SCRIPT_DIR/patch-terminal-browser-drag.sh" --check
   "$SCRIPT_DIR/patch-tode-ready-url.sh" --check
@@ -30,7 +30,7 @@ if [[ "$MODE" == "--check" ]]; then
   "$SCRIPT_DIR/patch-tode-worktree-review-click.sh" --check
 else
   "$SCRIPT_DIR/patch-terminal-browser.sh"
-  "$SCRIPT_DIR/patch-terminal-browser-ssh-reconnect.sh"
+  "$SCRIPT_DIR/patch-tode-direct.sh"
   "$SCRIPT_DIR/patch-terminal-browser-startup.sh"
   "$SCRIPT_DIR/patch-terminal-browser-drag.sh"
   "$SCRIPT_DIR/patch-tode-ready-url.sh"

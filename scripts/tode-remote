@@ -1,47 +1,104 @@
-#!/usr/bin/env bash
-# VS Code Remote-style tode: code-server runs on the remote machine (only
-# RPC/WebSocket crosses the SSH tunnel), pixels render locally with GPU.
-# Orders of magnitude lighter over a WAN than remote tode's pixel streaming.
-#   tode-remote <ssh-host> [remote-path] [port]
-# The remote code-server runs in a detached tmux session and does NOT
-# survive a remote instance restart — rerun this script to bring it back.
-set -euo pipefail
-HOST="${1:?usage: tode-remote <ssh-host> [remote-path] [port]}"
-RPATH="${2:-~}"
-PORT="${3:-8791}"
-TB="$HOME/.local/lib/tode/vendor/terminal-browser/bin/terminal-browser"
+#!/usr/bin/env python3
+"""Open a remote Tode workspace locally using authenticated HTTPS, without tunnels."""
+import argparse
+import hashlib
+import http.client
+from http.cookies import SimpleCookie
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import ssl
+import subprocess
+import tempfile
+from urllib.parse import urlencode, urlsplit
 
-ssh "$HOST" bash -s -- "$PORT" <<'RS'
-PORT="$1"
-CS=$(ls -d "$HOME"/.local/share/tode/code-server/*/bin/code-server 2>/dev/null | sort -V | tail -1)
-[ -z "$CS" ] && { echo "no code-server found on remote (install tode there first)"; exit 1; }
-REMOTE_SHELL=$(command -v zsh 2>/dev/null || true)
-if [ -z "$REMOTE_SHELL" ] && command -v getent >/dev/null 2>&1; then
-  REMOTE_SHELL=$(getent passwd "$(id -u)" | cut -d: -f7)
-fi
-[ -x "$REMOTE_SHELL" ] || REMOTE_SHELL=/bin/sh
-if ! curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
-  mkdir -p "$HOME/wxg/.logs"
-  tmux new-session -d -s "code-server-$PORT" \
-    "exec env SHELL='$REMOTE_SHELL' '$CS' --auth none --bind-addr 127.0.0.1:$PORT \
-       --user-data-dir $HOME/.local/share/tode/vscode/user-data \
-       --extensions-dir $HOME/.local/share/tode/vscode/extensions \
-       --app-name tode --disable-telemetry --disable-update-check \
-       --disable-workspace-trust --disable-getting-started-override --ignore-last-opened \
-       >> $HOME/wxg/.logs/code-server-$PORT.log 2>&1"
-  for _ in $(seq 1 20); do
-    curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break
-    sleep 0.5
-  done
-fi
-curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 \
-  && echo "remote code-server ready on :$PORT" \
-  || { echo "code-server failed to start; see ~/wxg/.logs/code-server-$PORT.log"; exit 1; }
-RS
+SSH_OPTIONS = [
+    "-a", "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+    "-o", "ProxyCommand=none", "-o", "ProxyJump=none",
+    "-o", "ControlMaster=no", "-o", "ControlPath=none",
+    "-o", "ConnectTimeout=10",
+]
 
-if ! nc -z 127.0.0.1 "$PORT" 2>/dev/null; then
-  ssh -f -N -o ExitOnForwardFailure=yes -L "$PORT:127.0.0.1:$PORT" "$HOST"
-  echo "tunnel up: localhost:$PORT -> $HOST:$PORT"
-fi
 
-exec "$TB" "http://127.0.0.1:$PORT/?folder=$RPATH"
+def login(info):
+    url = urlsplit(info["origin"])
+    if url.scheme != "https" or url.username or url.password:
+        raise ValueError("Remote endpoint must be HTTPS without embedded credentials")
+    context = ssl.create_default_context(cadata=info["certificate"])
+    connection = http.client.HTTPSConnection(url.hostname, url.port, context=context, timeout=10)
+    try:
+        connection.request("POST", "/login", urlencode({"password": info["password"]}),
+                           {"Content-Type": "application/x-www-form-urlencoded"})
+        response = connection.getresponse()
+        cookie = SimpleCookie()
+        for key, value in response.getheaders():
+            if key.lower() == "set-cookie":
+                cookie.load(value)
+        response.read()
+        if response.status not in (302, 303) or not cookie:
+            raise RuntimeError("Direct editor authentication failed")
+        return "; ".join(f"{name}={item.value}" for name, item in cookie.items())
+    finally:
+        connection.close()
+
+
+def remote_info(host, port, folder):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", host):
+        raise ValueError("Use a configured SSH alias, without SSH flags")
+    command = ("python3 \"$HOME/.local/share/shellos/tode-direct-server.py\" ensure "
+               f"--port {port} --folder {shlex.quote(folder)}")
+    result = subprocess.run(["/usr/bin/ssh", *SSH_OPTIONS, host, command],
+                            check=True, capture_output=True, text=True)
+    return json.loads(result.stdout)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("host")
+    parser.add_argument("folder", nargs="?", default="~")
+    parser.add_argument("port", nargs="?", type=int, default=8791)
+    parser.add_argument("--check", action="store_true", help="Verify HTTPS and login, without opening UI")
+    args = parser.parse_args()
+    if not 1024 <= args.port <= 65535:
+        parser.error("Use an unprivileged TCP port")
+    info = remote_info(args.host, args.port, args.folder)
+    cookie = login(info)
+    print(f"Direct HTTPS ready: {info['origin']} ({info['folder']})", flush=True)
+    if args.check:
+        return
+    root = Path(os.environ.get("TODE_INSTALL_ROOT", str(Path.home() / ".local/lib/tode")))
+    data = Path.home() / ".local/share/tode"
+    glue = root / "dist/browserglue.js"
+    subprocess.run(["node", "-e", "require(process.argv[1]).writeBrowserScripts()", str(glue)], check=True)
+    partition = "persist:shellos-direct-" + hashlib.sha256(info["origin"].encode()).hexdigest()[:20]
+    settings = {"origin": info["origin"], "certificate": info["certificate"],
+                "cookie": cookie, "partition": partition}
+    support = Path(__file__).resolve().with_name("tode-direct-browser.cjs")
+    directory = Path.home() / ".local/state/shellos/direct"
+    directory.mkdir(parents=True, mode=0o700, exist_ok=True)
+    directory.chmod(0o700)
+    # The browser daemon outlives launchers; use per-window data instead of env.
+    fd, filename = tempfile.mkstemp(suffix=".cjs", dir=directory)
+    with os.fdopen(fd, "w") as file:
+        file.write(f"require({json.dumps(str(support))}).configure({json.dumps(settings)});\n")
+        file.write(f"require({json.dumps(str(data / 'browser-main.js'))});\n")
+        file.write("require('node:fs').unlinkSync(__filename);\n")
+    url = info["origin"] + "/?" + urlencode({"folder": info["folder"]})
+    try:
+        result = subprocess.run([
+            str(root / "vendor/terminal-browser/bin/terminal-browser"),
+            "open", "--app-mode", "--partition", partition,
+            "--preload", str(data / "browser-preload.js"), "--main-script", filename, url,
+        ])
+        raise SystemExit(result.returncode)
+    finally:
+        Path(filename).unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        raise SystemExit(f"tode-remote: {error}")
