@@ -23,6 +23,10 @@ required=(
   scripts/configure-kitty-ssh.py
   scripts/prepare-direct-assets.py
   scripts/install-kitty-release.sh
+  scripts/build-kitty-app.sh
+  scripts/build-kitty-cocoa.sh
+  kitty/fullscreen-controls.m
+  kitty/fullscreen-controls.patch
   scripts/patch-terminal-browser-startup.sh
   scripts/patch-terminal-browser-drag.sh
   scripts/patch-tode-ready-url.sh

@@ -1,0 +1,50 @@
+--- a/glfw/cocoa_window.m
++++ b/glfw/cocoa_window.m
+@@ -37,6 +37,31 @@
+ #include <float.h>
+ #include <string.h>
+ #include <assert.h>
++
++#import "shellos_fullscreen_controls.m"
++
++static char shellos_fullscreen_controls_key;
++
++static void
++shellos_remove_fullscreen_controls(_GLFWwindow *window) {
++    ShellOSFullscreenControls *controls = objc_getAssociatedObject(window->ns.object, &shellos_fullscreen_controls_key);
++    [controls invalidate];
++    objc_setAssociatedObject(window->ns.object, &shellos_fullscreen_controls_key, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++
++static void
++shellos_update_fullscreen_controls(_GLFWwindow *window) {
++    if (!window->ns.in_traditional_fullscreen) {
++        shellos_remove_fullscreen_controls(window);
++    } else if (!objc_getAssociatedObject(window->ns.object, &shellos_fullscreen_controls_key)) {
++        ShellOSFullscreenControls *controls = [[ShellOSFullscreenControls alloc]
++            initWithWindow:window->ns.object closeHandler:^{ _glfwInputWindowCloseRequest(window); }];
++        objc_setAssociatedObject(window->ns.object, &shellos_fullscreen_controls_key, controls, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++        [controls start];
++        [controls release];
++    }
++}
++
+
+ #define debug debug_rendering
+
+@@ -2440,6 +2465,7 @@
+
+ static void
+ update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow *w, bool traditional, bool made_fullscreen) {
++    shellos_update_fullscreen_controls(w);
+     // Update window button visibility
+     if (w->ns.titlebar_hidden) {
+         NSWindow *window = w->ns.object;
+@@ -2625,6 +2651,7 @@
+
+ void
+ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
++    shellos_remove_fullscreen_controls(window);
+     GLFWWindow *w = window->ns.object;
+     if (_glfw.ns.disabledCursorWindow == window) _glfw.ns.disabledCursorWindow = NULL;
+     free_drop_data(window);

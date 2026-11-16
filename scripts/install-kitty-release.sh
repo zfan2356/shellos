@@ -25,8 +25,7 @@ fi
 printf '%s  %s\n' "$SHA256" "$ARCHIVE" | shasum -a 256 -c - >/dev/null
 mkdir "$WORK/mount"
 hdiutil attach -readonly -nobrowse -mountpoint "$WORK/mount" "$ARCHIVE" >/dev/null
-ditto "$WORK/mount/kitty.app" "$WORK/kitty.app"
-codesign --verify --deep --strict "$WORK/kitty.app"
+bash "$REPO/scripts/build-kitty-app.sh" "$WORK/mount/kitty.app" "$WORK/kitty.app"
 [[ "$("$WORK/kitty.app/Contents/MacOS/kitty" --version | awk '{print $2}')" == "${VERSION#v}" ]]
 mkdir -p "$BACKUP/apps"
 [[ ! -d /Applications/kitty.app ]] || mv /Applications/kitty.app "$BACKUP/apps/kitty.app"
@@ -34,4 +33,4 @@ if ! mv "$WORK/kitty.app" /Applications/kitty.app; then
   [[ ! -d "$BACKUP/apps/kitty.app" ]] || mv "$BACKUP/apps/kitty.app" /Applications/kitty.app
   exit 1
 fi
-echo "Installed pinned kitty $VERSION"
+echo "Installed pinned kitty $VERSION with ShellOS fullscreen controls"
