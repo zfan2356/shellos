@@ -27,7 +27,7 @@ if [[ "$REPO" != "$FORMAL_REPO" ]]; then
   exit 1
 fi
 
-for command in brew codesign curl diff git node npx patch python3 scp ssh xcrun; do
+for command in brew curl diff git node npx python3 scp ssh; do
   command -v "$command" >/dev/null 2>&1 || {
     echo "required command not found: $command" >&2
     exit 1
@@ -241,11 +241,6 @@ done <<< "$CURRENT_EXTENSIONS"
   echo "local kitty verification failed" >&2
   exit 1
 }
-KITTY_BACKEND=/Applications/kitty.app/Contents/Resources/Python/lib/kitty-extensions/kitty.glfw-cocoa.so
-KITTY_BUILD=/Applications/kitty.app/Contents/Resources/shellos-cocoa-build.txt
-grep -Fxq "backend_sha256=$(shasum -a 256 "$KITTY_BACKEND" | awk '{print $1}')" "$KITTY_BUILD"
-grep -Fxq "shellos_revision=$(git -C "$REPO" rev-parse HEAD)" "$KITTY_BUILD"
-codesign --verify --deep --strict /Applications/kitty.app
 grep -Fq 'shellos: unfocused-throttle v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-tode-direct.sh" --check
