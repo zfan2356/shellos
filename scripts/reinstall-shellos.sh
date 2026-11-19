@@ -196,9 +196,19 @@ done <<< "$CURRENT_EXTENSIONS"
 export EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":""}'
 EXTENSION_INVENTORY="$REPO/editor/extensions.tode.txt"
 MANAGED_EXTENSIONS=$(cut -d @ -f 1 "$EXTENSION_INVENTORY")
+code_server=$(find "$HOME/.local/share/tode/code-server" -type f \
+  -path '*/bin/code-server' -perm -111 | sort -V | tail -n 1)
+[[ -n "$code_server" ]] || { echo "local code-server not found" >&2; exit 1; }
+vscode_dir="$HOME/.local/share/tode/vscode"
 while IFS= read -r entry; do
   [[ -n "$entry" && "${entry%%@*}" != zfan2356.worktree-review ]] || continue
-  tode --install-extension "$entry"
+  if [[ "$entry" == *@* ]]; then
+    # Tode's wrapper cannot forward --force for older Marketplace versions.
+    "$code_server" --extensions-dir "$vscode_dir/extensions" \
+      --user-data-dir "$vscode_dir/user-data" --install-extension "$entry" --force
+  else
+    tode --install-extension "$entry"
+  fi
 done < "$EXTENSION_INVENTORY"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-worktree-review.sh"
 
