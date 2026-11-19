@@ -5,6 +5,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 source "$REPO/scripts/ssh-direct.sh"
+source "$REPO/scripts/tode-extension-inventory.sh"
 FORMAL_REPO="$HOME/wxg/shellos"
 SSH_HOST="${1:-}"
 PORT="${2:-8791}"
@@ -193,10 +194,12 @@ while IFS= read -r extension; do
   tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
 export EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":""}'
-while IFS= read -r extension; do
-  [[ -n "$extension" && "$extension" != zfan2356.worktree-review ]] || continue
-  tode --install-extension "$extension"
-done < "$REPO/editor/extensions.tode.txt"
+EXTENSION_INVENTORY="$REPO/editor/extensions.tode.txt"
+MANAGED_EXTENSIONS=$(cut -d @ -f 1 "$EXTENSION_INVENTORY")
+while IFS= read -r entry; do
+  [[ -n "$entry" && "${entry%%@*}" != zfan2356.worktree-review ]] || continue
+  tode --install-extension "$entry"
+done < "$EXTENSION_INVENTORY"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-worktree-review.sh"
 
 CURRENT_EXTENSIONS=$(tode --list-extensions | tr '[:upper:]' '[:lower:]')
@@ -207,31 +210,11 @@ while IFS= read -r extension; do
   case "$extension" in
     tode.tode-bridge|tode.tode-theme) continue ;;
   esac
-  grep -Fqx "$extension" "$REPO/editor/extensions.tode.txt" || \
+  grep -Fqx "$extension" <<< "$MANAGED_EXTENSIONS" || \
     tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
-CURRENT_EXTENSIONS=$(tode --list-extensions | tr '[:upper:]' '[:lower:]')
-while IFS= read -r extension; do
-  [[ -n "$extension" ]] || continue
-  printf '%s\n' "$CURRENT_EXTENSIONS" | grep -Fqx "$extension" || {
-    echo "local extension verification failed: $extension" >&2
-    exit 1
-  }
-done < "$REPO/editor/extensions.tode.txt"
-if printf '%s\n' "$CURRENT_EXTENSIONS" | grep -Fqx ms-python.vscode-pylance; then
-  echo "local extension verification failed: Pylance must not be installed" >&2
-  exit 1
-fi
-while IFS= read -r extension; do
-  [[ -n "$extension" ]] || continue
-  case "$extension" in
-    tode.tode-bridge|tode.tode-theme) continue ;;
-  esac
-  grep -Fqx "$extension" "$REPO/editor/extensions.tode.txt" || {
-    echo "local extension verification failed: unmanaged extension $extension" >&2
-    exit 1
-  }
-done <<< "$CURRENT_EXTENSIONS"
+CURRENT_EXTENSIONS=$(tode --list-extensions --show-versions | tr '[:upper:]' '[:lower:]')
+verify_tode_extensions "$EXTENSION_INVENTORY" "$CURRENT_EXTENSIONS" local
 
 [[ "$(tode --version)" == "$TODE_PIN" ]] || {
   echo "local tode verification failed" >&2

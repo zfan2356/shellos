@@ -91,6 +91,12 @@ See `docs/remote-server.md` for the direct HTTPS connection setup and
 `docs/dsh-tui.md` for the dsh pins, tracked configuration, and the per-machine
 `DEEPSEEK_API_KEY`.
 
+Tode entries in `editor/extensions.tode.txt` can specify `id@version`. The
+installer verifies those versions on both hosts. BasedPyright is pinned to
+1.40.0 because 1.40.2 can throw `isStubFile` errors during Python diagnostics
+and semantic highlighting. Verify both requests and definition navigation in
+a disposable workspace before removing the pin.
+
 ## Development workflow
 
 Use a separate clone or worktree for changes. Update source files and version

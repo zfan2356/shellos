@@ -1,5 +1,5 @@
 chadalen.vscode-jetbrains-icon-theme
-detachhead.basedpyright
+detachhead.basedpyright@1.40.0
 eamodio.gitlens
 isudox.vscode-jetbrains-keybindings
 llvm-vs-code-extensions.vscode-clangd

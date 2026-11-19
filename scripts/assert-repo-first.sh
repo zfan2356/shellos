@@ -18,6 +18,7 @@ required=(
   scripts/patch-tode-direct.sh
   scripts/tode-direct-server.py
   scripts/tode-direct-browser.cjs
+  scripts/tode-extension-inventory.sh
   scripts/tode-remote
   scripts/ssh-direct.sh
   scripts/configure-kitty-ssh.py
