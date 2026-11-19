@@ -73,6 +73,7 @@ PY
 
 cp "$REPO/editor/keybindings.tode.json" "$work/keybindings.json"
 cp "$REPO/editor/extensions.tode.txt" "$work/extensions.tode.txt"
+cp "$REPO/scripts/tode-extension-inventory.sh" "$work/tode-extension-inventory.sh"
 cp "$REPO/scripts/tode-remote-wrapper" "$work/tode-remote-wrapper"
 cp "$REPO/scripts/install-tode-release.sh" "$work/install-tode-release.sh"
 cp "$REPO/scripts/apply-tode-patches.sh" "$work/apply-tode-patches.sh"
@@ -96,6 +97,7 @@ TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-matc
 
 remote_work=$(ssh "$SSH_HOST" 'mktemp -d /tmp/shellos-remote-tode.XXXXXX')
 scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt" \
+  "$work/tode-extension-inventory.sh" \
   "$work/tode-remote-wrapper" "$work/install-tode-release.sh" \
   "$work/apply-tode-patches.sh" "$work/patch-terminal-browser.sh" \
   "$work/patch-terminal-browser-ssh-reconnect.sh" \
@@ -183,6 +185,8 @@ ssh "$SSH_HOST" bash -s -- "$remote_work/extensions.tode.txt" "$TODE_PIN" <<'REM
 set -euo pipefail
 inventory=$1
 tode_pin=$2
+source "${inventory%/*}/tode-extension-inventory.sh"
+managed_extensions=$(cut -d @ -f 1 "$inventory")
 code_server=$(find "$HOME/.local/share/tode/code-server" -type f \
   -path '*/bin/code-server' -perm -111 2>/dev/null | sort -V | tail -n 1)
 [[ -n "$code_server" ]] || { echo "remote code-server not found" >&2; exit 1; }
@@ -206,13 +210,12 @@ while IFS= read -r extension; do
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
     --uninstall-extension "$extension" || true
 done <<< "$current"
-while IFS= read -r extension; do
-  [[ -n "$extension" ]] || continue
-  [[ "$extension" == zfan2356.worktree-review ]] && continue
+while IFS= read -r entry; do
+  [[ -n "$entry" && "${entry%%@*}" != zfan2356.worktree-review ]] || continue
   "$code_server" \
     --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
-    --install-extension "$extension" --force
+    --install-extension "$entry" --force
 done < "$inventory"
 current=$(
   "$code_server" \
@@ -226,7 +229,7 @@ while IFS= read -r extension; do
   case "$extension" in
     tode.tode-bridge|tode.tode-theme) continue ;;
   esac
-  if ! grep -Fqx "$extension" "$inventory"; then
+  if ! grep -Fqx "$extension" <<< "$managed_extensions"; then
     "$code_server" \
       --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
       --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
@@ -237,25 +240,9 @@ current=$(
   "$code_server" \
     --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
-    --list-extensions | tr '[:upper:]' '[:lower:]'
+    --list-extensions --show-versions | tr '[:upper:]' '[:lower:]'
 )
-while IFS= read -r extension; do
-  [[ -n "$extension" ]] || continue
-  printf '%s\n' "$current" | grep -Fqx "$extension" || {
-    echo "remote extension verification failed: $extension" >&2
-    exit 1
-  }
-done < "$inventory"
-while IFS= read -r extension; do
-  [[ -n "$extension" ]] || continue
-  case "$extension" in
-    tode.tode-bridge|tode.tode-theme) continue ;;
-  esac
-  grep -Fqx "$extension" "$inventory" || {
-    echo "remote extension verification failed: unmanaged extension $extension" >&2
-    exit 1
-  }
-done <<< "$current"
+verify_tode_extensions "$inventory" "$current" remote
 [[ "$("$HOME/.local/bin/tode-pixel" --version)" == "$tode_pin" ]]
 grep -Fq "\"version\": \"$tode_pin\"" "$HOME/.local/state/tode/install.json"
 grep -Fq 'shellos: unfocused-throttle v2' \

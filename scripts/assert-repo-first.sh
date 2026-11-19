@@ -16,6 +16,8 @@ required=(
   scripts/apply-tode-patches.sh
   scripts/patch-terminal-browser.sh
   scripts/patch-terminal-browser-ssh-reconnect.sh
+  scripts/tode-extension-inventory.sh
+  scripts/tode-remote
   scripts/patch-terminal-browser-startup.sh
   scripts/patch-terminal-browser-drag.sh
   scripts/patch-tode-ready-url.sh
