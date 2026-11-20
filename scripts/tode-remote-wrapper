@@ -8,6 +8,7 @@ case "${1:-}" in
     exit 2 ;;
   -*) exec "$PIXEL_BIN" "$@" ;;
 esac
-echo "Open this directory from your Mac: tode-remote <ssh-alias> \"$(pwd)\"" >&2
+ssh_alias=${TODE_SSH_ALIAS:-'<ssh-alias>'}
+echo "Open this directory from your Mac: tode-remote $ssh_alias \"$(pwd)\"" >&2
 echo "Remote Kitty control and SSH forwarding are disabled." >&2
 exit 2

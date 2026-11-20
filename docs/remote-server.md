@@ -22,6 +22,9 @@ credentials; it never copies a private key or forwards an SSH agent.
 In an existing remote SSH shell, use `pwd` to identify the directory, then
 open it from the Mac. The remote `tode` wrapper prints this instruction and
 exits. Maintenance commands such as `tode --version` still run remotely.
+An SSH shortcut can export `TODE_SSH_ALIAS` for its interactive shell so the
+instruction includes the exact local alias, for example
+`tode-remote cvm "/root/wxg/mimikyu"`.
 The retired `tode --ssh` and terminal-browser SSH transport fail explicitly.
 Do not replace them with another tunnel when direct access is unavailable.
 
