@@ -84,13 +84,6 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 
 KITTY_PIN=$(git -C "$REPO/third-party/kitty" describe --tags --exact-match)
 TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-match)
-BREW_KITTY=$(brew info --cask --json=v2 kitty |
-  python3 -c 'import json,sys; print(json.load(sys.stdin)["casks"][0]["version"])')
-if [[ "v$BREW_KITTY" != "$KITTY_PIN" ]]; then
-  echo "refusing to deploy: Homebrew kitty is v$BREW_KITTY but ShellOS pins $KITTY_PIN" >&2
-  echo "update and push the kitty submodule pin first" >&2
-  exit 1
-fi
 
 # Confirm that the paired host is reachable and can run the tracked installer
 # before changing the local installation. A failed preflight leaves both
@@ -132,15 +125,7 @@ for source in \
 done
 echo "local backup: $BACKUP"
 
-if brew list --cask kitty >/dev/null 2>&1; then
-  brew uninstall --cask --force kitty
-fi
-if [[ -e /Applications/kitty.app ]]; then
-  mkdir -p "$BACKUP/apps"
-  mv /Applications/kitty.app "$BACKUP/apps/kitty.app"
-  echo "adopted unmanaged kitty app into $BACKUP/apps/kitty.app"
-fi
-brew install --cask kitty
+SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-kitty-release.sh" "$BACKUP"
 if brew list --cask font-maple-mono-nf-cn >/dev/null 2>&1; then
   brew reinstall --cask font-maple-mono-nf-cn
 else
