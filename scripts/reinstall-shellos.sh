@@ -4,8 +4,6 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO/scripts/ssh-direct.sh"
-source "$REPO/scripts/tode-extension-inventory.sh"
 FORMAL_REPO="$HOME/wxg/shellos"
 SSH_HOST="${1:-}"
 PORT="${2:-8791}"
@@ -82,10 +80,16 @@ update_homebrew() {
 }
 update_homebrew
 export HOMEBREW_NO_AUTO_UPDATE=1
-export HOMEBREW_NO_INSTALL_CLEANUP=1
 
 KITTY_PIN=$(git -C "$REPO/third-party/kitty" describe --tags --exact-match)
 TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-match)
+BREW_KITTY=$(brew info --cask --json=v2 kitty |
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["casks"][0]["version"])')
+if [[ "v$BREW_KITTY" != "$KITTY_PIN" ]]; then
+  echo "refusing to deploy: Homebrew kitty is v$BREW_KITTY but ShellOS pins $KITTY_PIN" >&2
+  echo "update and push the kitty submodule pin first" >&2
+  exit 1
+fi
 
 # Confirm that the paired host is reachable and can run the tracked installer
 # before changing the local installation. A failed preflight leaves both
@@ -110,11 +114,6 @@ command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || {
   echo "paired ShellOS host needs sha256sum or shasum" >&2
   exit 1
 }
-[[ -x /usr/sbin/iptables && "$(id -u)" == 0 ]] || {
-  echo "direct Tode currently requires root and iptables for its endpoint-only source restriction" >&2
-  exit 1
-}
-command -v openssl >/dev/null
 REMOTE_PREFLIGHT
 
 STAMP=$(date +%Y%m%d-%H%M%S)
@@ -122,7 +121,6 @@ BACKUP="$HOME/.local/share/shellos-backups/$STAMP"
 mkdir -p "$BACKUP"
 for source in \
   "$HOME/.config/kitty/kitty.conf" \
-  "$HOME/.config/kitty/ssh.conf" \
   "$HOME/.config/kitty/current-theme.conf" \
   "$HOME/.config/kitty/macos-launch-services-cmdline" \
   "$HOME/.config/kitty/tode/keybinds.kitty.conf" \
@@ -133,7 +131,15 @@ for source in \
 done
 echo "local backup: $BACKUP"
 
-SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-kitty-release.sh" "$BACKUP"
+if brew list --cask kitty >/dev/null 2>&1; then
+  brew uninstall --cask --force kitty
+fi
+if [[ -e /Applications/kitty.app ]]; then
+  mkdir -p "$BACKUP/apps"
+  mv /Applications/kitty.app "$BACKUP/apps/kitty.app"
+  echo "adopted unmanaged kitty app into $BACKUP/apps/kitty.app"
+fi
+brew install --cask kitty
 if brew list --cask font-maple-mono-nf-cn >/dev/null 2>&1; then
   brew reinstall --cask font-maple-mono-nf-cn
 else
@@ -147,7 +153,6 @@ install -m 644 "$REPO/kitty/macos-launch-services-cmdline" \
   "$HOME/.config/kitty/macos-launch-services-cmdline"
 install -m 644 "$REPO/kitty/tode/keybinds.kitty.conf" \
   "$HOME/.config/kitty/tode/keybinds.kitty.conf"
-python3 "$REPO/scripts/configure-kitty-ssh.py" "$HOME/.config/kitty/ssh.conf"
 
 tode --shutdown >/dev/null 2>&1 || true
 SHELLOS_FULL_REINSTALL=1 \
@@ -194,22 +199,10 @@ while IFS= read -r extension; do
   tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
 export EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":""}'
-EXTENSION_INVENTORY="$REPO/editor/extensions.tode.txt"
-MANAGED_EXTENSIONS=$(cut -d @ -f 1 "$EXTENSION_INVENTORY")
-code_server=$(find "$HOME/.local/share/tode/code-server" -type f \
-  -path '*/bin/code-server' -perm -111 | sort -V | tail -n 1)
-[[ -n "$code_server" ]] || { echo "local code-server not found" >&2; exit 1; }
-vscode_dir="$HOME/.local/share/tode/vscode"
-while IFS= read -r entry; do
-  [[ -n "$entry" && "${entry%%@*}" != zfan2356.worktree-review ]] || continue
-  if [[ "$entry" == *@* ]]; then
-    # Tode's wrapper cannot forward --force for older Marketplace versions.
-    "$code_server" --extensions-dir "$vscode_dir/extensions" \
-      --user-data-dir "$vscode_dir/user-data" --install-extension "$entry" --force
-  else
-    tode --install-extension "$entry"
-  fi
-done < "$EXTENSION_INVENTORY"
+while IFS= read -r extension; do
+  [[ -n "$extension" && "$extension" != zfan2356.worktree-review ]] || continue
+  tode --install-extension "$extension"
+done < "$REPO/editor/extensions.tode.txt"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/install-worktree-review.sh"
 
 CURRENT_EXTENSIONS=$(tode --list-extensions | tr '[:upper:]' '[:lower:]')
@@ -220,11 +213,31 @@ while IFS= read -r extension; do
   case "$extension" in
     tode.tode-bridge|tode.tode-theme) continue ;;
   esac
-  grep -Fqx "$extension" <<< "$MANAGED_EXTENSIONS" || \
+  grep -Fqx "$extension" "$REPO/editor/extensions.tode.txt" || \
     tode --uninstall-extension "$extension" || true
 done <<< "$CURRENT_EXTENSIONS"
-CURRENT_EXTENSIONS=$(tode --list-extensions --show-versions | tr '[:upper:]' '[:lower:]')
-verify_tode_extensions "$EXTENSION_INVENTORY" "$CURRENT_EXTENSIONS" local
+CURRENT_EXTENSIONS=$(tode --list-extensions | tr '[:upper:]' '[:lower:]')
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  printf '%s\n' "$CURRENT_EXTENSIONS" | grep -Fqx "$extension" || {
+    echo "local extension verification failed: $extension" >&2
+    exit 1
+  }
+done < "$REPO/editor/extensions.tode.txt"
+if printf '%s\n' "$CURRENT_EXTENSIONS" | grep -Fqx ms-python.vscode-pylance; then
+  echo "local extension verification failed: Pylance must not be installed" >&2
+  exit 1
+fi
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  case "$extension" in
+    tode.tode-bridge|tode.tode-theme) continue ;;
+  esac
+  grep -Fqx "$extension" "$REPO/editor/extensions.tode.txt" || {
+    echo "local extension verification failed: unmanaged extension $extension" >&2
+    exit 1
+  }
+done <<< "$CURRENT_EXTENSIONS"
 
 [[ "$(tode --version)" == "$TODE_PIN" ]] || {
   echo "local tode verification failed" >&2
@@ -236,7 +249,10 @@ verify_tode_extensions "$EXTENSION_INVENTORY" "$CURRENT_EXTENSIONS" local
 }
 grep -Fq 'shellos: unfocused-throttle v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
-SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-tode-direct.sh" --check
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
+  "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
+  "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-terminal-browser-startup.sh" --check
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-tode-ready-url.sh" --check
 SHELLOS_FULL_REINSTALL=1 "$REPO/scripts/patch-tode-theme.sh" --check

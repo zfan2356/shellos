@@ -3,7 +3,6 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO/scripts/ssh-direct.sh"
 SSH_HOST="${1:-}"
 
 if [[ "${SHELLOS_FULL_REINSTALL:-}" != 1 ]]; then

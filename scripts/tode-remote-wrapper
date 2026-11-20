@@ -1,14 +1,88 @@
 #!/bin/sh
-# Remote CLI operations work; opening a local window is now a local action.
+# Remote-side `tode`: run code-server remotely and render it in an overlay of
+# the current local kitty window. Installed only by the complete ShellOS
+# reinstall entrypoint.
 set -eu
+
+CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
+CONFIG="$CONFIG_HOME/shellos/remote-tode.env"
+[ -r "$CONFIG" ] && . "$CONFIG"
+
 PIXEL_BIN=${TODE_PIXEL_BIN:-"$HOME/.local/bin/tode-pixel"}
+
+pixel() {
+  if [ ! -x "$PIXEL_BIN" ]; then
+    echo "pixel-mode launcher not found: $PIXEL_BIN" >&2
+    exit 1
+  fi
+  exec "$PIXEL_BIN" "$@"
+}
+
+# Flags are commands for tode itself, not project paths. Keep them on the
+# remote installation instead of trying to route them through the Mac.
 case "${1:-}" in
-  --ssh)
-    echo "SSH tunneling is disabled; run tode-remote from your Mac." >&2
-    exit 2 ;;
-  -*) exec "$PIXEL_BIN" "$@" ;;
+  -*) pixel "$@" ;;
 esac
-ssh_alias=${TODE_SSH_ALIAS:-'<ssh-alias>'}
-echo "Open this directory from your Mac: tode-remote $ssh_alias \"$(pwd)\"" >&2
-echo "Remote Kitty control and SSH forwarding are disabled." >&2
-exit 2
+
+project=${1:-.}
+project=$(cd "$project" 2>/dev/null && pwd) || {
+  echo "no such directory: ${1:-.}" >&2
+  exit 1
+}
+
+# The ssh kitten copies its kitten binary here even when the login shell's
+# PATH setup later hides it.
+KITTEN_BIN=$(command -v kitten 2>/dev/null || true)
+if [ -z "$KITTEN_BIN" ] && [ -x "$HOME/.local/share/kitty-ssh-kitten/kitty/bin/kitten" ]; then
+  KITTEN_BIN="$HOME/.local/share/kitty-ssh-kitten/kitty/bin/kitten"
+fi
+
+if [ -n "${KITTY_LISTEN_ON:-}" ] && [ -n "$KITTEN_BIN" ]; then
+  if [ -z "${TODE_REMOTE_SSH_HOST:-}" ]; then
+    echo "TODE_REMOTE_SSH_HOST is missing from $CONFIG" >&2
+    exit 1
+  fi
+  # Remote control confirms that kitty created the overlay, not that the local
+  # tode process connected successfully. Keep a failed launch visible so a
+  # stale SSH alias or another startup error cannot masquerade as success.
+  echo "opening locally in the current kitty window: $project"
+  ready_url=$("$PIXEL_BIN" --serve --ready-url "$project" 2>/dev/null) || ready_url=""
+  "$KITTEN_BIN" @ launch --type=overlay-main --self --title "tode $(basename "$project")" \
+    /bin/sh -lc '
+      if [ -n "$3" ]; then
+        root="${TODE_INSTALL_ROOT:-$HOME/.local/lib/tode}"
+        data="${XDG_DATA_HOME:-$HOME/.local/share}/tode"
+        browser="$root/vendor/terminal-browser/bin/terminal-browser"
+        if [ -x "$browser" ] && [ -f "$data/browser-preload.js" ] && [ -f "$data/browser-main.js" ]; then
+          "$browser" open --app-mode --ssh "ssh $1" "$3" \
+            "--preload=$data/browser-preload.js" "--main-script=$data/browser-main.js"
+        else
+          "$HOME/.local/bin/tode" --ssh "ssh $1" --ready-url "$3"
+        fi
+      else
+        "$HOME/.local/bin/tode" --ssh "ssh $1" "$2"
+      fi
+      status=$?
+      if [ "$status" -ne 0 ]; then
+        printf "\ntode could not open %s through SSH target %s (exit %s)\n" \
+          "$2" "$1" "$status" >&2
+        printf "Press Enter to close this overlay..." >&2
+        IFS= read -r _ || true
+      fi
+      exit "$status"
+    ' sh "$TODE_REMOTE_SSH_HOST" "$project" "$ready_url" >/dev/null \
+    && exit 0
+  echo "kitty remote control failed; falling back to pixel mode" >&2
+elif [ -z "${KITTY_WINDOW_ID:-}" ]; then
+  # Plain `ssh` session: no remote control, and pixel mode cannot locate the
+  # local kitty pane either — it would only die with a cryptic error.
+  echo "this session has no kitty environment, so tode cannot render anywhere." >&2
+  echo "reconnect with: kitten ssh ${TODE_REMOTE_SSH_HOST:-<host>}" >&2
+  exit 1
+elif [ -z "${KITTY_LISTEN_ON:-}" ]; then
+  echo "no forwarded kitty remote control (ssh.conf forward_remote_control?); falling back to pixel mode" >&2
+else
+  echo "kitten binary not found on this host; falling back to pixel mode" >&2
+fi
+
+pixel "$project"

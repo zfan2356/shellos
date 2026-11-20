@@ -1,102 +1,268 @@
-# Remote Tode over direct HTTPS
+# Pairing ShellOS with a remote development server
 
-The Mac renders Tode locally. The paired Linux host runs native code-server
-with TLS and password authentication. Ordinary SSH starts the editor and
-returns connection metadata; editor HTTP and WebSocket traffic uses the
-host's internal address directly. There is no SSH port forwarding or SOCKS
-proxy, and the remote machine receives no access to Kitty's control socket.
+The remote machine runs code-server while the local kitty/tode renderer shows
+the UI. No editor pixels cross the network. The entire remote installation,
+including every compatibility patch, is generated from the committed ShellOS
+repository.
 
-## Open a workspace
+## Private SSH inputs
 
-Run this command in a local Kitty shell:
+Keep SSH keys and aliases outside the public repository. Connect with
+`kitten ssh <ssh-alias>` rather than plain `ssh`; this installs kitty shell
+integration and forwards its remote-control socket.
 
-```bash
-tode-remote <ssh-alias> /absolute/remote/project
+The local-only `~/.config/kitty/ssh.conf` needs an entry such as:
+
+```text
+hostname <your-remote-host-patterns>
+login_shell zsh
+forward_remote_control yes
 ```
 
-The default endpoint port is 8791. A third argument selects a different port.
-Use `--check` to verify certificate validation, connectivity and login without
-opening a window. The launcher uses the existing SSH host-key trust and
-credentials; it never copies a private key or forwards an SSH agent.
-
-In an existing remote SSH shell, use `pwd` to identify the directory, then
-open it from the Mac. The remote `tode` wrapper prints this instruction and
-exits. Maintenance commands such as `tode --version` still run remotely.
-An SSH shortcut can export `TODE_SSH_ALIAS` for its interactive shell so the
-instruction includes the exact local alias, for example
-`tode-remote cvm "/root/wxg/mimikyu"`.
-The retired `tode --ssh` and terminal-browser SSH transport fail explicitly.
-Do not replace them with another tunnel when direct access is unavailable.
-
-## Endpoint security and lifetime
-
-The server binds only the address of the authenticated SSH connection, never
-a wildcard. A dedicated iptables chain restricts that destination and port
-to the server itself and clients that authenticated over SSH. Other host
-firewall rules remain in effect. Deployment currently requires a Linux root
-account and iptables. No firewall policy or unrelated port is opened.
-
-On first launch the host creates its own private key, a one-year self-signed
-certificate with its exact IP address in the SAN, and a random password.
-Private files live under `~/.config/shellos/direct/<port>/` with owner-only
-permissions. The private key stays on the server. The public certificate and
-login password travel only inside the verified SSH channel.
-
-The Mac validates the HTTPS server against that certificate and its hostname.
-Its Electron session accepts only the exact certificate obtained through SSH,
-and only for that host. HTTP and WebSocket authentication cookies are injected
-only for the selected editor origin, never for another host, port or plaintext
-HTTP. No system-wide CA changes or disabled certificate validation are used.
-A private per-window script is deleted after the browser loads it.
-
-Native code-server handles authentication, HTTPS and WebSocket upgrades.
-Its general port-proxy feature is disabled. Tode styling and its font are
-installed as native workbench assets; the remote editor does not use the old
-CSS-injecting proxy. Existing extensions, review features and editor settings
-use the same remote profile.
-
-The server survives SSH disconnection but does not automatically start at
-boot. The next local launch starts it again. Logs and process identity are
-kept beside its config. Expired certificates and changed server addresses
-fail closed and require deliberate reprovisioning. No automatic fallback
-changes the transport.
-
-## Deployment
-
-All changes follow `skills/shellos/SKILL.md`: independent authoring checkout,
-focused validation, commit and push, formal checkout pull, full reinstall:
+The alias passed to `kitten ssh` must match the `hostname` pattern. On the
+remote, verify the connection before troubleshooting tode:
 
 ```bash
+test -n "$KITTY_LISTEN_ON"
+command -v kitten
+```
+
+Plain `ssh` does not provide this environment and cannot open the local overlay.
+The SSH alias is case-sensitive and must also match the alias passed to the
+last complete ShellOS reinstall. If the alias is renamed or its case changes,
+rerun the complete installer with the new spelling. A local Tode startup error
+is kept visible in the overlay until Enter is pressed instead of being reported
+as a successful open.
+
+## Installation and updates
+
+Never install, patch, or copy an individual remote component manually. Add any
+required fix to an independent ShellOS checkout, validate it, commit and push
+it, fast-forward the formal checkout, and run the complete installer from the
+formal checkout:
+
+```bash
+cd ~/wxg/shellos
+git pull --ff-only origin main
 ./scripts/reinstall-shellos.sh <ssh-alias> [port]
 ```
 
-The complete installer disables every `forward_remote_control` directive in
-the private Kitty SSH config, preserving host aliases and login shells. The
-new wildcard policy also defaults future hosts to no control forwarding.
-Existing SSH sessions must be closed separately if they were opened under an
-older configuration. Deployment SSH/SCP commands explicitly disable forwarding,
-proxies, jump hosts and shared control connections.
+The installer replaces the remote tode installation with the release pinned by
+`third-party/terminal-code`, reapplies every tracked Tode patch, renders the Linux
+form of canonical editor settings, restores the exact extension inventory and
+Worktree Review, and installs the tracked remote wrapper. It then installs the
+pinned dsh CLI and dsh-tui on the same host and writes the tracked harness
+configuration; see `docs/dsh-tui.md`. The private alias,
+compatibility port, and login shell are written to the remote-only
+`~/.config/shellos/remote-tode.env`; this file contains connection identity,
+not behavior or patch logic.
 
-Tode release archives are cached and their pinned checksums are rechecked on
-every reinstall. The startup patch now targets the native CLI directly and
-does not depend on the retired SSH reconnect patch.
+Internal scripts such as `deploy-remote-tode.sh`,
+`install-worktree-review.sh` and `patch-terminal-browser.sh` deliberately
+reject direct invocation.
 
-The installer uses the pinned Kitty release archive and SHA-256 even when
-Homebrew's current catalog is newer. This keeps a transport fix from upgrading
-Kitty implicitly. The checksum recorded for v0.49.2 is the previously installed
-Homebrew release artifact; its application signature is verified before the swap.
+## Fonts and Python defaults
 
-## Verification
+Tode serves its bundled JetBrains Mono font to the editor. The separate
+`narasimapandiyan.jetbrainsmono` activation extension is intentionally absent:
+it prompts on startup, opens a font directory on the headless remote, and
+removes font settings when it deactivates. Canonical editor settings keep
+JetBrains Mono enabled without that extension.
 
-Run `python3 -B tests/tode-direct.test.py`,
-`node --test tests/tode-direct-browser.test.cjs` and
-`bash tests/tode-remote-wrapper.test.sh`. Also apply `patch-tode-direct.sh`
-to a disposable release copy and verify its `--check` mode.
+The global Python fallback is `python3` from the host PATH. Repositories with
+a local environment should select `${workspaceFolder}/.venv/bin/python` in
+ignored `.vscode/settings.json`; the environment must match the repository's
+current Python requirement. A global workspace-relative `.venv` path is invalid
+when the opened folder has no environment. Existing interpreter selections
+are saved separately by the Python extension, so select the local interpreter
+once after replacing an environment and reload the editor.
 
-After deployment verify the native HTTPS listener, source-restricted firewall
-chain, unauthenticated rejection, authenticated workbench and WebSocket,
-certificate mismatch rejection (also exercised with the real Electron binary
-by `tests/electron-direct-https.test.cjs`), real Kitty rendering and absence of new
-SSH forwarding processes. A successful SSH bootstrap alone is not proof of
-editor connectivity. If the internal service port is blocked, report that
-network requirement without attempting a tunnel.
+## Usage
+
+From a connection opened with `kitten ssh`:
+
+```bash
+tode <remote-project-path>
+```
+
+The remote `tode` wrapper asks the local kitty to launch local tode with its
+native `--ssh` transport as an `overlay-main`. Closing the editor reveals the
+same remote shell. Worktree Review follows the opened repository and current
+Git branch automatically; when enabled, it immediately opens the first branch
+change in the saved layout (Side-by-Side by default). Use the Review status bar
+button to close or reopen it. The tracked Tode workbench patch lets changed
+Explorer files open their review directly, without briefly opening and closing
+the source tab first. The pinned Tode `v0.2.0` SSH transport does not
+forward a trailing `--review` argument, so the repository does not advertise
+that spelling for remote sessions. Leading flags are delegated to the pinned
+remote pixel launcher when appropriate.
+
+The local terminal-browser supervises its SSH SOCKS master. If a network
+interruption kills that master while the remote Tode services remain alive,
+it recreates the tunnel on the same local port, reapplies that window's proxy,
+discards Chromium's stale connections, and reloads every editor tab. Each SSH
+window leases its own persistent browser partition so another Tode window cannot
+replace its proxy or tear it down when closing. Partitions are isolated by the
+exact SSH target and concurrent window slot. Closing a window releases its slot
+only after pending proxy work and connection teardown finish; the next window
+reuses its disk cache with a new proxy connection. This avoids downloading the
+editor assets again for every folder while retaining multi-window isolation.
+The first launch for a host or an additional concurrent slot still has a cold
+cache. Explicit `--partition` values retain their original behavior.
+The launcher reports transport
+and editor recovery separately; after `reconnected <host>` the editor should be
+usable without reopening Tode.
+
+`Ctrl+Shift+Q` is an unconditional emergency exit for the Tode browser window,
+including app mode where ordinary browser shortcuts are disabled. Use it if the
+SSH host remains unreachable or recovery cannot reload the editor. A white
+editor that keeps logging WebSocket code 1006 without a recovery status means
+the reconnect patch is absent or the configured SSH host is still unreachable.
+
+### Startup cache verification
+
+Run `bash tests/patch-terminal-browser-ssh-reconnect.test.sh` for cache-slot
+isolation, reuse, failed startup, and close/reconnect races. The optional real
+Electron test uses disposable user data and restarts Electron between cold and
+warm reads:
+
+```bash
+ELECTRON_BIN=/path/to/electron node tests/electron-ssh-cache.test.cjs
+```
+
+It also checks an ephemeral-session baseline. By default it serves a local
+cacheable fixture; set `SHELLOS_CACHE_TEST_URL` to a cacheable editor asset over
+a temporary SSH forward to measure real remote reads without opening a
+workspace or modifying the installed browser profile. This measures asset
+loading, not end-to-end editor readiness. On October 13, 2026, a 17.8 MB remote
+workbench asset took 534 ms cold, 46 ms from the persistent cache after restarting
+Electron, and 500 ms in a fresh ephemeral session. First-ever startup, SSH
+connection setup, bundle preparation, and extension activation remain separate
+costs; changing folders still creates distinct upstream bundles.
+
+### Ready-server launch path
+
+The paired-host wrapper probes `tode --serve --ready-url <folder>`. This checks
+the recorded server/injector processes and listeners without importing a
+profile, listing extensions, querying terminal colors, or starting services.
+When ready, the local overlay launches terminal-browser directly with the
+generated Tode preload/main scripts. Missing browser scripts use the Tode
+`--ssh <target> --ready-url <url>` path to generate them. A stopped server falls
+back to the original bundle/setup path. This fast path relies on the full
+ShellOS reinstall to synchronize the two machines' canonical settings and
+extensions; it deliberately does not reimport the Mac profile on every folder
+open. Normal direct `tode --ssh` launches keep their upstream bundle behavior.
+
+The wrapper passes its installer-verified SSH target as `ssh <target>`, avoiding
+terminal-browser's interactive-shell alias lookup (about 0.91 seconds on the
+measured Mac). This is not a change to arbitrary user-entered SSH aliases.
+Browser-daemon startup runs in parallel with SSH connection establishment, and
+socket polling uses 25 ms rather than 200 ms. Electron's default
+`window-all-closed` behavior is suppressed so the existing daemon idle timer
+actually controls its lifetime. The idle grace period is 15 minutes, retaining
+the browser process but not closed editor windows; `tode --shutdown` still stops
+it explicitly. SSH tunnels remain isolated and close with their windows.
+
+### Workbench startup measurements
+
+`tests/prepare-tode-startup-benchmark.sh` prepares an isolated remote installation,
+copied profile/extensions, and two tiny test folders under `/tmp`. It uses only
+the existing code-server binary and does not change the installed profile.
+`tests/tode-startup-benchmark.cjs` launches the disposable local installation in
+a real kitty window, waits for `code/didStartWorkbench`, then closes only the
+test window. Set `KITTY_TEST_SOCKET` to the kitty control socket. Optional
+`KITTY_TEST_WINDOW` selects an overlay parent; `SHELLOS_BENCH_DIRECT=1` measures
+the ready wrapper's direct-browser path. The JSON report separates time before
+navigation from workbench initialization. `SHELLOS_STARTUP_RESOURCES=1` adds
+CDP resource timings, and the disposable directory retains the full Tode marks
+and child-process trace for diagnosis.
+
+On October 13, 2026, consecutive overlay launches of the ready-server path took
+1189, 1154, and 1097 ms from the Mac launch request to the workbench startup mark.
+The workbench itself accounted for 733–814 ms. These are not sub-second
+end-to-end results: they exclude the remote wrapper probe, use tiny folders,
+and do not establish completion of Explorer loading or language-server startup.
+The first browser launch and stopped-server fallback are slower. Do not treat
+the earlier single-asset cache result as an editor startup SLA. Run
+`node tests/tode-startup.test.cjs` for ready/fallback, URL validation, parallel
+startup, and daemon lifecycle regression checks.
+
+The historical `scripts/tode-remote <ssh-host> [remote-path] [port]` launcher
+remains a tracked compatibility/debugging tool, but it is not an installation
+path.
+
+## Tabs and the ssh kitten
+
+Kitty's cwd-aware actions reconnect over ssh. From a window opened by the ssh
+kitten, `new_tab_with_cwd` and `new_window_with_cwd` relaunch the recorded ssh
+command on the same host at the same directory, so the canonical kitty config
+keeps them off the plain tab chord:
+
+- `⌘T` opens a local tab on the Mac, whichever host the active window is on.
+- `⌥⌘T` opens a tab on the active window's host and directory (the reconnect).
+- `⌃⇧D` splits keep the active window's host and directory for remote work.
+- `⌘W` closes the tab; `confirm_os_window_close -1` asks first while a command
+  (ssh counts) is still running, including when the last tab would quit kitty.
+
+With a cwd-inheriting `⌘T`, every new tab lands back in the remote session and
+the only route to a local shell is closing the tab that holds the session.
+
+## Troubleshooting policy
+
+### Homebrew update transport
+
+The complete installer bounds stalled Git HTTP transfers with a 30-second
+low-speed timeout. If the configured Tsinghua Homebrew mirror fails, it retries
+the update through the official GitHub repository using a process-local Git
+URL rewrite. Homebrew filters ordinary `GIT_*` environment variables, so the
+tracked `scripts/homebrew-git` shim supplies these options with `git -c` via
+`HOMEBREW_GIT_PATH`. It does not change the user's configured mirror or global
+Git configuration. Failures on other custom remotes are
+not redirected. The retry gives the failed updater's children two seconds to
+release Homebrew's update lock before starting a new updater. This preflight completes before any Tode installation is
+replaced. Run `bash tests/homebrew-update.test.sh` to verify fallback behavior.
+
+### SSH target resolution
+
+The generated `TODE_REMOTE_SSH_HOST` must be an SSH target that works from the
+Mac, not merely a remote hostname or a shell shortcut. The installer writes
+its `<ssh-alias>` argument verbatim; the remote wrapper passes it unchanged
+to local `tode --ssh`. Tode's terminal-browser opens its tunnel with `ssh`
+from the local PATH. It can expand simple shell aliases for `ssh`, but does
+not execute shell functions. Kitty's `ssh.conf` controls bootstrap and remote
+control; it does not replace OpenSSH's `~/.ssh/config` host mapping.
+
+Before changing anything, inspect the exact target in the remote env file and
+compare each spelling on the Mac:
+
+```bash
+type -a <ssh-alias>
+alias <ssh-alias>
+functions <ssh-alias>
+command -v ssh
+ssh -G <ssh-alias> | grep -E '^(hostname|user|port|identityfile) '
+ssh -o BatchMode=yes -o ConnectTimeout=10 <ssh-alias> 'hostname'
+```
+
+Do not infer a case mismatch solely from a lowercase name in a DNS error.
+Compare `ssh -G` output and real connections: an unmatched spelling may fall
+back to DNS, the local username, and port 22 even when another spelling works.
+When the saved target is stale, use the verified OpenSSH alias for the complete
+published reinstall above. This regenerates `remote-tode.env`; do not hand-edit
+the installed wrapper or env file, or blindly lowercase arbitrary SSH targets.
+Keep private hostnames, addresses, keys, and mappings outside this repository.
+
+Finally, reconnect in kitty with `kitten ssh <ssh-alias>`, run
+`tode <remote-project-path>`, and verify that the remote editor actually loads.
+A successful kitty `launch` response only confirms creation of an overlay, not
+SSH or editor readiness. The wrapper keeps failed local launches visible with
+their exit status until Enter is pressed. Complete reinstalls back up the
+wrapper itself as well as its launcher symlink so existing changes survive.
+
+### Remote runtime compatibility
+
+On old or headless Linux hosts, Electron may need glibc compatibility, sandbox,
+or GPU handling. Diagnose read-only, then implement the solution as a tracked
+ShellOS script or patch. Publish it and run the complete reinstall on both
+machines. Never keep the commands in private notes, modify the live remote
+installation, or skip the local reinstall because a change appears remote-only.

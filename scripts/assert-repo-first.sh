@@ -15,15 +15,7 @@ required=(
   scripts/homebrew-git
   scripts/apply-tode-patches.sh
   scripts/patch-terminal-browser.sh
-  scripts/patch-tode-direct.sh
-  scripts/tode-direct-server.py
-  scripts/tode-direct-browser.cjs
-  scripts/tode-extension-inventory.sh
-  scripts/tode-remote
-  scripts/ssh-direct.sh
-  scripts/configure-kitty-ssh.py
-  scripts/prepare-direct-assets.py
-  scripts/install-kitty-release.sh
+  scripts/patch-terminal-browser-ssh-reconnect.sh
   scripts/patch-terminal-browser-startup.sh
   scripts/patch-terminal-browser-drag.sh
   scripts/patch-tode-ready-url.sh

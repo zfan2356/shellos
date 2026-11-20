@@ -4,7 +4,6 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-source "$REPO/scripts/ssh-direct.sh"
 SSH_HOST="${1:-}"
 PORT="${2:-8791}"
 
@@ -74,14 +73,12 @@ PY
 
 cp "$REPO/editor/keybindings.tode.json" "$work/keybindings.json"
 cp "$REPO/editor/extensions.tode.txt" "$work/extensions.tode.txt"
-cp "$REPO/scripts/tode-extension-inventory.sh" "$work/tode-extension-inventory.sh"
 cp "$REPO/scripts/tode-remote-wrapper" "$work/tode-remote-wrapper"
-cp "$REPO/scripts/tode-direct-server.py" "$work/tode-direct-server.py"
-cp "$REPO/scripts/prepare-direct-assets.py" "$work/prepare-direct-assets.py"
 cp "$REPO/scripts/install-tode-release.sh" "$work/install-tode-release.sh"
 cp "$REPO/scripts/apply-tode-patches.sh" "$work/apply-tode-patches.sh"
 cp "$REPO/scripts/patch-terminal-browser.sh" "$work/patch-terminal-browser.sh"
-cp "$REPO/scripts/patch-tode-direct.sh" "$work/patch-tode-direct.sh"
+cp "$REPO/scripts/patch-terminal-browser-ssh-reconnect.sh" \
+  "$work/patch-terminal-browser-ssh-reconnect.sh"
 cp "$REPO/scripts/patch-tode-ready-url.sh" "$work/patch-tode-ready-url.sh"
 cp "$REPO/scripts/patch-tode-theme.sh" "$work/patch-tode-theme.sh"
 cp "$REPO/scripts/patch-terminal-browser-startup.sh" "$work/patch-terminal-browser-startup.sh"
@@ -99,11 +96,9 @@ TODE_PIN=$(git -C "$REPO/third-party/terminal-code" describe --tags --exact-matc
 
 remote_work=$(ssh "$SSH_HOST" 'mktemp -d /tmp/shellos-remote-tode.XXXXXX')
 scp -q "$work/settings.json" "$work/keybindings.json" "$work/extensions.tode.txt" \
-  "$work/tode-extension-inventory.sh" \
-  "$work/tode-direct-server.py" "$work/prepare-direct-assets.py" \
   "$work/tode-remote-wrapper" "$work/install-tode-release.sh" \
   "$work/apply-tode-patches.sh" "$work/patch-terminal-browser.sh" \
-  "$work/patch-tode-direct.sh" \
+  "$work/patch-terminal-browser-ssh-reconnect.sh" \
   "$work/patch-tode-ready-url.sh" \
   "$work/patch-tode-theme.sh" \
   "$work/patch-terminal-browser-startup.sh" \
@@ -142,7 +137,7 @@ fi
 
 chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
   "$staging/patch-terminal-browser.sh" \
-  "$staging/patch-tode-direct.sh" \
+  "$staging/patch-terminal-browser-ssh-reconnect.sh" \
   "$staging/patch-tode-ready-url.sh" \
   "$staging/patch-tode-theme.sh" \
   "$staging/patch-terminal-browser-startup.sh" \
@@ -151,9 +146,6 @@ chmod +x "$staging/install-tode-release.sh" "$staging/apply-tode-patches.sh" \
   "$staging/patch-tode-worktree-review-click.sh"
 if [[ -x "$bin_dir/tode" ]]; then
   "$bin_dir/tode" --shutdown >/dev/null 2>&1 || true
-fi
-if [[ -f "$share_dir/tode-direct-server.py" ]]; then
-  python3 "$share_dir/tode-direct-server.py" stop --port "$port"
 fi
 SHELLOS_FULL_REINSTALL=1 \
   XDG_BIN_HOME="$HOME/.local/bin" \
@@ -172,9 +164,6 @@ rm -f "$bin_dir/tode-pixel"
 mv "$bin_dir/tode" "$bin_dir/tode-pixel"
 
 install -m 755 "$staging/tode-remote-wrapper" "$share_dir/tode-remote-wrapper"
-install -m 755 "$staging/tode-direct-server.py" "$share_dir/tode-direct-server.py"
-install -m 755 "$staging/prepare-direct-assets.py" "$share_dir/prepare-direct-assets.py"
-python3 "$share_dir/prepare-direct-assets.py"
 install -m 644 "$staging/settings.json" "$user_dir/settings.json"
 install -m 644 "$staging/keybindings.json" "$user_dir/keybindings.json"
 install -m 600 "$staging/remote-tode.env" "$config_dir/remote-tode.env"
@@ -183,6 +172,7 @@ install -m 644 "$staging/vim/ftdetect/shellos.vim" "$HOME/.vim/ftdetect/shellos.
 cmp "$staging/vim/ftdetect/shellos.vim" "$HOME/.vim/ftdetect/shellos.vim"
 ln -sfn "$share_dir/tode-remote-wrapper" "$bin_dir/tode"
 
+tmux kill-session -t "code-server-$port" 2>/dev/null || true
 echo "remote backup: $backup"
 echo "remote wrapper: $bin_dir/tode -> $share_dir/tode-remote-wrapper"
 REMOTE
@@ -193,8 +183,6 @@ ssh "$SSH_HOST" bash -s -- "$remote_work/extensions.tode.txt" "$TODE_PIN" <<'REM
 set -euo pipefail
 inventory=$1
 tode_pin=$2
-source "${inventory%/*}/tode-extension-inventory.sh"
-managed_extensions=$(cut -d @ -f 1 "$inventory")
 code_server=$(find "$HOME/.local/share/tode/code-server" -type f \
   -path '*/bin/code-server' -perm -111 2>/dev/null | sort -V | tail -n 1)
 [[ -n "$code_server" ]] || { echo "remote code-server not found" >&2; exit 1; }
@@ -218,12 +206,13 @@ while IFS= read -r extension; do
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
     --uninstall-extension "$extension" || true
 done <<< "$current"
-while IFS= read -r entry; do
-  [[ -n "$entry" && "${entry%%@*}" != zfan2356.worktree-review ]] || continue
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  [[ "$extension" == zfan2356.worktree-review ]] && continue
   "$code_server" \
     --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
-    --install-extension "$entry" --force
+    --install-extension "$extension" --force
 done < "$inventory"
 current=$(
   "$code_server" \
@@ -237,7 +226,7 @@ while IFS= read -r extension; do
   case "$extension" in
     tode.tode-bridge|tode.tode-theme) continue ;;
   esac
-  if ! grep -Fqx "$extension" <<< "$managed_extensions"; then
+  if ! grep -Fqx "$extension" "$inventory"; then
     "$code_server" \
       --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
       --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
@@ -248,16 +237,33 @@ current=$(
   "$code_server" \
     --extensions-dir "$HOME/.local/share/tode/vscode/extensions" \
     --user-data-dir "$HOME/.local/share/tode/vscode/user-data" \
-    --list-extensions --show-versions | tr '[:upper:]' '[:lower:]'
+    --list-extensions | tr '[:upper:]' '[:lower:]'
 )
-verify_tode_extensions "$inventory" "$current" remote
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  printf '%s\n' "$current" | grep -Fqx "$extension" || {
+    echo "remote extension verification failed: $extension" >&2
+    exit 1
+  }
+done < "$inventory"
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  case "$extension" in
+    tode.tode-bridge|tode.tode-theme) continue ;;
+  esac
+  grep -Fqx "$extension" "$inventory" || {
+    echo "remote extension verification failed: unmanaged extension $extension" >&2
+    exit 1
+  }
+done <<< "$current"
 [[ "$("$HOME/.local/bin/tode-pixel" --version)" == "$tode_pin" ]]
 grep -Fq "\"version\": \"$tode_pin\"" "$HOME/.local/state/tode/install.json"
 grep -Fq 'shellos: unfocused-throttle v2' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
-grep -Fq 'shellos: direct HTTPS only v1' \
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
-grep -Fq 'shellos: direct HTTPS only v1' "$HOME/.local/lib/tode/dist/ssh.js"
+grep -Fq 'shellos: ssh-tunnel-reconnect v3' \
+  "$HOME/.local/lib/tode/vendor/terminal-browser/browser/dist/main.js"
 grep -Fq 'shellos: parallel-startup v1' \
   "$HOME/.local/lib/tode/vendor/terminal-browser/cli/dist/main.js"
 grep -Fq 'shellos: parallel-startup v1' \

@@ -86,11 +86,11 @@ installed result in place.
   installer replaces both on every reinstall. `DEEPSEEK_API_KEY` and every
   other credential stay outside the repository in `$DSH_HOME/.env` or
   `$DSH_HOME/.credentials.yaml`. See `docs/dsh-tui.md`.
-- The full installer verifies the pinned Kitty archive checksum and app
-  signature, backs up the existing bundle, and installs that exact release.
-  Do not implicitly upgrade the pin to follow the current Homebrew catalog.
-- Remote Tode uses native HTTPS/WSS with SSH-only lifecycle operations. Read
-  `docs/remote-server.md`; never restore remote Kitty control or SSH tunnels.
+- A pre-existing `/Applications/kitty.app` may not have a matching Homebrew
+  cask receipt. Do not delete or overwrite it manually. The full installer
+  moves any unmanaged bundle into its timestamped backup before installing the
+  pinned cask, and the complete workflow must be restarted after such a
+  failure.
 - Internal helpers (`link.sh`, `install-tode-release.sh`,
   `apply-tode-patches.sh`, the tracked `patch-*.sh` scripts,
   `install-worktree-review.sh`, `assert-repo-first.sh`, and
